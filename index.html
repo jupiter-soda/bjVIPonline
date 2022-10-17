@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Blackjack VIP Online</title>
+        <link rel="stylesheet" type="text/css" href="/bjtemp.css">
+    </head>
+    <body onload="loadpage()">
+        <script src="https://code.jquery.com/jquery-3.6.1.min.js" integrity="sha256-o88AwQnZB+VDvE9tvIXrMQaPlFFSUTR+nldQm1LuPXQ=" crossorigin="anonymous"></script>
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+        const socket = io();
+        </script>
+        <script type="text/javascript" src="/game.js"></script>
+        <div class="container">
+            <div class="window">
+                <div class="header">
+                    <h1>Welcome To Blackjack VIP Online</h1>
+                </div>
+                <div class="body">
+                    <div class="newRoom">
+                        <h4>Create a New Game</h4>
+                        <form onsubmit="return false">                        
+                            <input name="p1name" type="text" placeholder="your name here">
+                            <button class="createBtn btn btn-primary">Create</button>
+                        </form>
+                    </div>
+                    
+                    <div class="joinRoom">
+                        <h4>Join an existing Game</h4>
+                        <form onsubmit="return false">                        
+                            <input name="p2name" type="text" placeholder="your name here">
+                            <input name="roomID" type="text" placeholder="room ID here">
+                            <button class="joinBtn btn btn-primary">Join</button>
+                        </form>
+                    </div>
+                    <div class="leaderboard">
+                        <span class="player1">
+                            <h4 class="name">
+                                Player1 :                             
+                            </h4>
+                        </span>
+                        <span class="player2">
+                            <h4 class="name">
+                                Player2:                             
+                            </h4>
+                        </span>
+                    </div>
+                    <div id="message">
+                        Waiting for other player's choice...
+                    </div> 
+                </div>
+            </div>
+        </div>
+        <div id="blackjackdiv"></div>
+    </body>
+</html>

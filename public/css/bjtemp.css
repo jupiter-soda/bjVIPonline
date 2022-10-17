@@ -1,0 +1,119 @@
+.gamehands
+{
+    background-color: #eaeaea;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    display: table;
+    padding: 1em;
+  	color: #3a3a3a;
+}
+
+th
+{
+    color: #2336ac;
+}
+
+.buttonbox
+{
+    /*background-color: #717171;*/
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+    padding: 8px 8px 8px 8px
+}
+
+.textupdates
+{
+    background-color: #06283d;
+    text-align: center;
+    padding: 1em;
+	font-size: large;
+    font-weight: bold;
+    margin-top: 16px;
+    margin-bottom: 6px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    color: #eee;
+}
+
+.cool
+{
+    background-color: #ff0000
+}
+
+.hot
+{
+    background-color: #2336ac
+}
+
+.hidden
+{
+    visibility: hidden
+}
+
+.blackcard
+{
+    font-weight: bold;      
+}
+
+.bold
+{
+    font-weight: bold;
+}
+
+.redcard
+{
+    color: red;
+    font-weight: bold;   
+}
+
+.gamecards
+{
+    list-style-type: none;
+  	font-size: smaller;
+
+}
+
+.gamehands > button
+{
+    font-size: 18px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    margin: 10px 0px 10px 0px;
+    padding: 10px;
+    border: 2px solid #000000; /* black */    
+    font-weight: bold;
+    border-radius: 6px;
+}
+
+button#newgame
+{
+    background-color: green;
+    width: 140px;
+}
+
+
+button#hit
+{
+    background-color: blueviolet;
+    width: 70px;
+}
+
+button#stay
+{
+    background-color: red;
+    width: 70px;
+}
+
+#tracker
+{   
+    border-top: 3px solid black;
+    border-bottom: 2px solid black;
+}
+
+#blackjackdiv{
+  display: flex;
+  flex-direction: column;
+  background-color: green;
+  align-items: center;
+  border-radius: 8em;
+}
