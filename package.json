@@ -4,7 +4,8 @@
   "description": "VIP blackjack online",
   "main": "app.js",
   "scripts": {
-    "test": "test"
+    "test": "test",
+    "start": "start"
   },
   "author": "jupiter.soda",
   "license": "ISC",
