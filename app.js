@@ -1,4 +1,6 @@
 const express = require('express');
+require('dotenv').config();
+const port = process.env.PORT;
 const app = express();
 const fs = require('fs');
 const path = require('path');
@@ -26,7 +28,7 @@ app.get('/', (request, response) => {
         response.end();
     });
 });
-server.listen(3000, () => {
+server.listen(process.env.PORT || 3000, () => {
     console.log('listening on *:3000');
     console.log(server.address());
 });
