@@ -52,6 +52,10 @@ socket.on("player2wager",(data)=>{
     jsbAppElems.buttonBox.classList.add('hidden');
     if(!data.jsbApp.gameComplete){
         loadwager();
+    }else{
+        jsbAppElems.newgame.classList.add('hidden');
+        let message = JSON.stringify({method:"gameComplete", jsbApp:data.jsbApp});
+        window.top.postMessage(message, "*");
     }
 });
 socket.on("showmessage",(data)=>{

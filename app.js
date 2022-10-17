@@ -477,9 +477,7 @@ function player2wins(jsbApp){
   let wager = parseInt(jsbApp.wager);
   jsbApp.player2money = parseInt(jsbApp.player2money) + wager;
   jsbApp.player1money = parseInt(jsbApp.player1money) - wager;
-  if(jsbApp.player1money==0){
-    jsbApp.gameComplete = true;
-  }
+  jsbApp.gameComplete = jsbApp.player1money==0;
   jsbApp.status = "Player 2 wins.";
 }
 function player1wins(jsbApp){
@@ -487,9 +485,7 @@ function player1wins(jsbApp){
   let wager = parseInt(jsbApp.wager);
   jsbApp.player1money = parseInt(jsbApp.player1money) + wager;
   jsbApp.player2money =  parseInt(jsbApp.player2money) - wager;
-  if(jsbApp.player2money==0){
-    jsbApp.gameComplete = true;
-  }
+  jsbApp.gameComplete = jsbApp.player2money==0;
   jsbApp.status = "Player 1 wins.";
 }
 function gametie(jsbApp){
