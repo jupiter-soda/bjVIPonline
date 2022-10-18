@@ -260,7 +260,7 @@ io.on('connection', function(socket) {
         rooms[data.roomID].player1info.assisstant = data.assisstant;
       }else if(rooms[data.roomID].hasOwnProperty("player2info") && rooms[data.roomID].player2info.id == socket.id){
         rooms[data.roomID].player2info.currentevent = data.currentevent;
-        rooms[data.roomID].player1info.assisstant = data.assisstant;
+        rooms[data.roomID].player2info.assisstant = data.assisstant;
       }
     }
 
