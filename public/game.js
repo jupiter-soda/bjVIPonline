@@ -68,7 +68,7 @@ socket.on("showmessage",(data)=>{
     }
 });
 socket.on("availablerooms",(data)=>{
-    $('.newRoom').html('');
+    $('#roomslist').html('');
     let rooms = data.rooms;
     let headers = ["RoomID", "Player","Model","Event"];
     let table = document.createElement("TABLE");  //makes a table element for the page
@@ -88,7 +88,10 @@ socket.on("availablerooms",(data)=>{
         headerRow.insertCell(i).innerHTML = headers[i];
     }
     table.classList.add('fl-table');
-    $('.newRoom').html(table);
+    $('#roomslist').html(table);
+    $('#roomslist').append('Rooms found :'+rooms.length);
+    $('#roomslist').removeClass('hidden');
+    
 });
 
 const transition=(data)=>{
