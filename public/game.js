@@ -2,6 +2,7 @@ let firstPlayer=false;
 let roomID;
 let jsbApp = {};
 let jsbAppElems = {};
+let userinfo = {money:100};
 
 //New Game Created Listener
 socket.on("newGame",(data)=>{
@@ -9,7 +10,7 @@ socket.on("newGame",(data)=>{
     $(".joinRoom").hide();
     let message = JSON.stringify({method:"initdata"});
     window.top.postMessage(message, "*");
-    $("#message").html("Waiting for player 2, room ID is "+data.roomID).show();
+    $("#message").html("Waiting for player 2,Room ID: "+data.roomID).show();
     roomID=data.roomID;
 })
 
@@ -59,14 +60,35 @@ socket.on("player2wager",(data)=>{
     }
 });
 socket.on("showmessage",(data)=>{
-    switch(code){
+    switch(data.code){
     case 100:
-        let message = JSON.stringify({method:"alert", message:data.message});
-        window.top.postMessage(message, "*");
         alert(data.message);
     default:
         console.log(data);
     }
+});
+socket.on("availablerooms",(data)=>{
+    $('.newRoom').html('');
+    let rooms = data.rooms;
+    let headers = ["RoomID", "Player","Model","Event"];
+    let table = document.createElement("TABLE");  //makes a table element for the page
+        
+    for(let i = 0; i < rooms.length; i++) {
+        let row = table.insertRow(i);
+        let playerinfo = rooms[i].playerinfo;
+        row.insertCell(0).innerHTML = rooms[i].roomID;
+        row.insertCell(1).innerHTML = playerinfo.name;
+        row.insertCell(2).innerHTML = playerinfo.assisstant.name;
+        row.insertCell(3).innerHTML = playerinfo.assisstant.currentevent;
+    }
+
+    let header = table.createTHead();
+    let headerRow = header.insertRow(0);
+    for(var i = 0; i < headers.length; i++) {
+        headerRow.insertCell(i).innerHTML = headers[i];
+    }
+
+    $('.newRoom').html(table);
 });
 
 const transition=(data)=>{
@@ -97,7 +119,7 @@ var loadpage = function(){
             return;
         }
         const playerName=$("input[name=p1name").val();
-        socket.emit('createGame',{name:playerName});
+        socket.emit('createGame',{name:playerName,private:document.getElementById('privateroom').checked});
     });
     //Join Game Event Emitter
     $(".joinBtn").click(function(){
@@ -111,9 +133,15 @@ var loadpage = function(){
         window.top.postMessage(message, "*");    
         socket.emit('joinGame',{
             name:playerName,
-            roomID:roomID
+            roomID:roomID,
+            money:userinfo.money
         });
     });
+    $("#listrooms").click(function(){
+        socket.emit('listrooms');
+    });
+    let message = JSON.stringify({method:"inituserinfo"});
+    window.top.postMessage(message, "*");    
 }
 function initjsbGameApp(){
     // Store important elements in variables for later manipulation
@@ -149,6 +177,7 @@ function loadBlackjack(data){
     loadHand(2,player2Hand,jsbAppElems.p2cards,jsbAppElems.p2handtext);
     jsbAppElems.status.innerHTML = jsbApp.status;
     jsbApp.dealer = firstPlayer;
+    track();
     let message = JSON.stringify({method:"updatedata",jsbApp:jsbApp});
     window.top.postMessage(message, "*"); 
 }
@@ -209,8 +238,6 @@ function track(){
     let wins = firstPlayer?jsbApp.p1wins:jsbApp.p2wins;
     let losses = firstPlayer?jsbApp.p2wins:jsbApp.p1wins;
     jsbAppElems.tracker.innerHTML = "<p>Wins: " + wins + " Draws: " + jsbApp.draws + " Losses: " + losses + "</p>";
-    // document.getElementById("playermoney").innerHTML =  "Money: &dollar;"+jsbApp.totalmoney;
-    // document.getElementById("dealermoney").innerHTML =  "Money: &dollar;"+jsbApp.dealermoney;
 }
 function parsedatamodiframe(data){
     data = JSON.parse(data)
@@ -219,11 +246,14 @@ function parsedatamodiframe(data){
       case "initplayerdata":
         socket.emit('initplayerdata',{roomID:roomID,currentevent:data.currentevent,assisstant:data.assisstant});
         break;
+    case "inituserinfo":
+        userinfo = {money:data.money};
+        break;
     default:
         console.log("Invalid message");
     } 
   }
 window.addEventListener('message', function(event) {
-    console.log("Message received from the parent: " + event.data); // Message received from parent
+    // console.log("Message received from the parent: " + event.data); // Message received from parent
     parsedatamodiframe(event.data);
   });

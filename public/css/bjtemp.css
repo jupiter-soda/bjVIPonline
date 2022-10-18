@@ -1,3 +1,7 @@
+@import 'https://fonts.googleapis.com/css?family=Varela';
+body{
+    font-family: Varela Round, Arial, Helvetica, sans-serif;
+}
 .gamehands
 {
     background-color: #eaeaea;

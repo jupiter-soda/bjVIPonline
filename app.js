@@ -8,12 +8,13 @@ const http = require('http');
 const server = http.createServer(app);
 const io = require('socket.io')(server);
 const randomstring = require("randomstring");
+const e = require('express');
 // const io = socketio().listen(server);
 const ACTION_SELECTING_WAGER = "Player 2 is selecting a wager";
 const ACTION_SELECTING_CHOICE_2 = "Player 2 is making their choice";
 const ACTION_SELECTING_CHOICE_1 = "Player 1 is making their choice";
 const blackjacktabletemplate = '<div class="blackjackplayarea"><div class="buttonbox divHidden" id="newgame"><div class="textupdates" id="textUpdates"> Press \'New Game\' to begin! </div> <div id="wagerbox">    How much would you like to bet?<br>    $<input type="text" id="wager" maxlength="255"><br></div>   <button alt="play" id="play">New Game</button> </div> <div class="buttonbox hidden" id="buttonBox"> <button alt="hit" id="hit">Hit</button> <button alt="stay" id="stay">Stay</button> </div> <table class="gamehands"> <tr> <th id="p1hand"> Player 1\'s  Hand </th> <th id="p2hand"> Player 2\'s Hand </th> </tr> <tr> <td id="p1cards">No cards dealt yet</td> <td id="p2cards">No cards dealt yet</td> </tr> </table> <div id="tracker" class="buttonbox"> <p>Wins: 0 Draws: 0 Losses: 0</p> </div> <div class="buttonbox"> <p><span class="bold" >Status: </span></p> <span id="status" class="bold redcard"></span> <!--<br /> <br /> <img src="img/stratchart.png" />--> </div></div>'; 
-app.use(express.static('public'));4
+app.use(express.static('public'));
 app.get('/', (request, response) => {
     response.writeHead(200, {
         'Content-Type': 'text/html'
@@ -57,14 +58,19 @@ io.on('connection', function(socket) {
     console.info(`Server side socket[${socket.id}] connection established.`);
     //Whenever someone disconnects this piece of code executed
     socket.on('disconnect', function () {
-       console.log('A user disconnected');
+      if(players.hasOwnProperty(socket.id)){
+        socket.broadcast.emit("showmessage",{code:100, message:"Player has disconnected."});
+        delete rooms[players[socket.id]];
+        
+      }
+      console.log('A user disconnected');
     });
     socket.on("createGame",(data)=>{
         const roomID=randomstring.generate({length: 4});  
-        rooms[roomID] = {players : [socket.id], player1info:{id:socket.id,name:data.name}};
+        rooms[roomID] = {players : [socket.id], player1info:{id:socket.id,name:data.name}, private:data.private};
         socket.join(roomID);        
-        players[roomID]=data.name;
-        console.log("Room created by "+data.name+" Id:"+roomID);
+        players[socket.id]=roomID;
+        console.log("Room created by "+data.name+" Id:"+roomID)+" Private Room:"+data.private;
         socket.emit("newGame",{roomID:roomID});
     });
     //Join Game Listener
@@ -72,19 +78,28 @@ io.on('connection', function(socket) {
         if(rooms.hasOwnProperty(data.roomID) && rooms[data.roomID].players.length<2) {   
             var curr_players = rooms[data.roomID].players;
             let cost = rooms[data.roomID].player1info.currentevent.cost;
-            curr_players.push(socket.id);
-            rooms[data.roomID].players = curr_players;
-            rooms[data.roomID].jsbApp = initjsbApp();
-            rooms[data.roomID].jsbApp.player1money = cost;
-            rooms[data.roomID].jsbApp.player2money = cost;
-            rooms[data.roomID].jsbApp.tablemoney = cost;
-            rooms[data.roomID].jsbApp.gamebegin = true;
-            rooms[data.roomID].player2info = {id:socket.id,name:data.name};
-            socket.join(data.roomID);
-            socket.emit("player2Joined",{p2name: data.name,p1name:players[data.roomID]});
-            socket.broadcast.emit("player1Joined",{p2name:players[data.roomID],p1name:data.name});
-            console.log(data.name+"- Room joined Id:"+data.roomID);
-            console.log(rooms[data.roomID].jsbApp.deck.length);
+            if(data.money>=cost){
+              curr_players.push(socket.id);
+              rooms[data.roomID].players = curr_players;
+              rooms[data.roomID].jsbApp = initjsbApp();
+              rooms[data.roomID].jsbApp.player1money = cost;
+              rooms[data.roomID].jsbApp.player2money = cost;
+              rooms[data.roomID].jsbApp.tablemoney = cost;
+              rooms[data.roomID].jsbApp.gamebegin = true;
+              rooms[data.roomID].player2info = {id:socket.id,name:data.name};
+              players[socket.id]=data.roomID;
+              socket.join(data.roomID);
+              socket.emit("player2Joined",{p2name: data.name,p1name:players[data.roomID]});
+              socket.broadcast.emit("player1Joined",{p2name:players[data.roomID],p1name:data.name});
+              console.log(data.name+"- Room joined Id:"+data.roomID);
+              console.log(rooms[data.roomID].jsbApp.deck.length);
+            }else{
+              socket.emit("showmessage",{code:100, message:"Not enough money to join room"});
+            }
+        }else{
+          if(rooms.hasOwnProperty(data.roomID) && rooms[data.roomID].players.length>1){
+            socket.emit("showmessage",{code:100, message:"Room is full"});
+          }
         }
     });
     socket.on("beginGame",(data)=>{
@@ -242,12 +257,24 @@ io.on('connection', function(socket) {
     if(rooms.hasOwnProperty(data.roomID)) {   
       if(rooms[data.roomID].hasOwnProperty("player1info") && rooms[data.roomID].player1info.id == socket.id){
         rooms[data.roomID].player1info.currentevent = data.currentevent;
+        rooms[data.roomID].player1info.assisstant = data.assisstant;
       }else if(rooms[data.roomID].hasOwnProperty("player2info") && rooms[data.roomID].player2info.id == socket.id){
         rooms[data.roomID].player2info.currentevent = data.currentevent;
+        rooms[data.roomID].player1info.assisstant = data.assisstant;
       }
     }
 
-  })
+  });
+  socket.on("listrooms",(data)=>{
+    let availablerooms = [];
+    for(let i in rooms){
+      let room = rooms[i];
+      if(!room.private){
+        availablerooms.push({playerinfo:room.player1info,roomID:i})
+      }
+    }
+    socket.emit("availablerooms",{rooms:availablerooms});
+  });
 
 });
 const hiddencardtemp =  new card("", 0, "Hidden Card", "hidden");

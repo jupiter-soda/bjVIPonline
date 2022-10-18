@@ -13,14 +13,16 @@
         <script type="text/javascript" src="/game.js"></script>
         <div class="container">
             <div class="window">
-                <div class="header">
+                <div class="textupdates">
                     <h1>Welcome To Blackjack VIP Online</h1>
                 </div>
-                <div class="body">
+                <div class="gamehands">
                     <div class="newRoom">
                         <h4>Create a New Game</h4>
                         <form onsubmit="return false">                        
-                            <input name="p1name" type="text" placeholder="your name here">
+                            <input name="p1name" type="text" placeholder="Enter your name">
+                            <div>Private room:
+                            <input type="checkbox" id="privateroom"></div>
                             <button class="createBtn btn btn-primary">Create</button>
                         </form>
                     </div>
@@ -28,10 +30,11 @@
                     <div class="joinRoom">
                         <h4>Join an existing Game</h4>
                         <form onsubmit="return false">                        
-                            <input name="p2name" type="text" placeholder="your name here">
-                            <input name="roomID" type="text" placeholder="room ID here">
+                            <input name="p2name" type="text" placeholder="Enter your name">
+                            <input name="roomID" type="text" placeholder="Enter Room ID">
                             <button class="joinBtn btn btn-primary">Join</button>
                         </form>
+                        <button id="listrooms" class="btn btn-primary">List rooms</button>
                     </div>
                     <div class="leaderboard">
                         <span class="player1">
