@@ -87,7 +87,7 @@ socket.on("availablerooms",(data)=>{
     for(var i = 0; i < headers.length; i++) {
         headerRow.insertCell(i).innerHTML = headers[i];
     }
-
+    table.classList.add('fl-table');
     $('.newRoom').html(table);
 });
 
