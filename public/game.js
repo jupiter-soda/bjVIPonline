@@ -93,7 +93,10 @@ socket.on("availablerooms",(data)=>{
     $('#roomslist').removeClass('hidden');
     
 });
-
+socket.on("hidenewgame",(data)=>{
+    jsbAppElems.newgame.classList.add('hidden');
+    loadBlackjack(data);
+});
 const transition=(data)=>{
     $(".newRoom").hide();
     $(".joinRoom").hide();

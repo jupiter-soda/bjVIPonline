@@ -109,13 +109,13 @@ io.on('connection', function(socket) {
           if(jsbApp.gameStatus == 0 && !jsbApp.gameComplete && (wager > 0 && wager <= jsbApp.player2money)){
               jsbApp.player1Hand = [];
               jsbApp.player2Hand = [];
-              jsbApp.player1Hand.push(jsbApp.deck.pop());
+              jsbApp.player1Hand.push(drawcard(jsbApp));
               cc(jsbApp,jsbApp.player1Hand);
-              jsbApp.player1Hand.push(jsbApp.deck.pop());
+              jsbApp.player1Hand.push(drawcard(jsbApp));
               cc(jsbApp,jsbApp.player1Hand);
-              jsbApp.player2Hand.push(jsbApp.deck.pop());
+              jsbApp.player2Hand.push(drawcard(jsbApp));
               cc(jsbApp,jsbApp.player2Hand);
-              jsbApp.player2Hand.push(jsbApp.deck.pop());
+              jsbApp.player2Hand.push(drawcard(jsbApp));
               cc(jsbApp,jsbApp.player2Hand);
               jsbApp.gameStatus=1 // player 2 turn
               jsbApp.wager = data.wager;
@@ -138,6 +138,7 @@ io.on('connection', function(socket) {
                 jsbApp.gameStatus = 2 // player 1(dealer) turn
                 jsbApp.status = ACTION_SELECTING_CHOICE_1
                 socket.broadcast.emit("player1choice",{jsbApp:getjsbAppforClient(jsbApp)});
+                socket.emit("hidenewgame",{jsbApp:getjsbAppforClient(jsbApp)});
               }
               socket.broadcast.emit("updateblackjacktable",{jsbApp:getjsbAppforClient(jsbApp)});
           }else{
@@ -155,14 +156,14 @@ io.on('connection', function(socket) {
         let playerHand = player1?jsbApp.player1Hand:jsbApp.player2Hand;
         if((jsbApp.gameStatus==2 && player1) ||(jsbApp.gameStatus==1 && !player1)){
           jsbApp.status = "";
-          playerHand.push(jsbApp.deck.pop());
+          playerHand.push(drawcard(jsbApp));
           cc(jsbApp,playerHand);
           let total = handTotal(playerHand);
           if(player2){
             if(total>21){
               player1wins(jsbApp);
               jsbApp.gameStatus = 0 //game complete
-              jsbApp.status += ACTION_SELECTING_WAGER;
+              jsbApp.status = jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
               io.in(data.roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
               return;
             }else if(total==21){
@@ -170,8 +171,9 @@ io.on('connection', function(socket) {
               if(p1total==total){
                 gametie(jsbApp);
                 jsbApp.gameStatus = 0; //game complete
+                jsbApp.status = jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
                 io.in(data.roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
-              }else{
+              }else if(p1total<total){
                 jsbApp.gameStatus = 2 //player 1 (dealer) turn
                 jsbApp.status = ACTION_SELECTING_CHOICE_1;
                 socket.broadcast.emit("player1choice",{jsbApp:getjsbAppforClient(jsbApp)});
@@ -184,7 +186,7 @@ io.on('connection', function(socket) {
             if(total>21){
               player2wins(jsbApp);
               jsbApp.gameStatus = 0 //game complete
-              jsbApp.status += ACTION_SELECTING_WAGER;
+              jsbApp.status = jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
               io.in(data.roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
               return;
             }else if(total==21){
@@ -195,14 +197,14 @@ io.on('connection', function(socket) {
               }else{
                 player1wins(jsbApp);
               }
-              jsbApp.status += ACTION_SELECTING_WAGER;
+              jsbApp.status = jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
               io.in(data.roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
             }else{
               let p2total = handTotal(jsbApp.player2Hand);
               if(total>p2total){
                 player1wins(jsbApp);
                 jsbApp.gameStatus = 0 //game complete
-                jsbApp.status += ACTION_SELECTING_WAGER;
+                jsbApp.status = jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
                 io.in(data.roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
               }else{
                 jsbApp.status = ACTION_SELECTING_CHOICE_1
@@ -229,6 +231,7 @@ io.on('connection', function(socket) {
           if(p2total< p1total){
             jsbApp.gameStatus = 0;  // game ends
             player1wins(jsbApp);
+            jsbApp.status = ACTION_SELECTING_WAGER;
             io.in(data.roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
           }else{
             jsbApp.gameStatus = 2;  // player 1 (dealer) turn
@@ -243,7 +246,7 @@ io.on('connection', function(socket) {
             player2wins(jsbApp);
           }
           jsbApp.gameStatus = 0;  // game end
-          jsbApp.status += ACTION_SELECTING_WAGER;
+          jsbApp.status = jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
           io.in(data.roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
         }
       }else{
@@ -518,4 +521,10 @@ function player1wins(jsbApp){
 function gametie(jsbApp){
   jsbApp.draws++;
   jsbApp.status = "Game tied.";
+}
+function drawcard(jsbApp){
+  if(jsbApp.deck.length==0){
+    jsbApp.deck = createDeck(jsbApp);
+  }
+  return jsbApp.deck.pop();
 }
