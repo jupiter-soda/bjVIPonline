@@ -90,14 +90,14 @@ io.on('connection', function(socket) {
               rooms[data.roomID].jsbApp.player1money = cost;
               rooms[data.roomID].jsbApp.player2money = cost;
               rooms[data.roomID].jsbApp.tablemoney = cost;
-              // rooms[data.roomID].jsbApp.gamebegin = true;
               rooms[data.roomID].player2info = {id:socket.id,name:data.name};
+              jsbApp.player1info = rooms[data.roomID].player1info;
+              jsbApp.player2info = rooms[data.roomID].player2info;
               players[socket.id]=data.roomID;
               socket.join(data.roomID);
               socket.emit("player2Joined",{p2name: data.name,p1name:players[data.roomID]});
               socket.broadcast.emit("player1Joined",{p2name:players[data.roomID],p1name:data.name});
               console.log(data.name+"- Room joined Id:"+data.roomID);
-              console.log(rooms[data.roomID].jsbApp.deck.length);
             }else{
               socket.emit("showmessage",{code:100, message:"Not enough money to join room"});
             }
@@ -125,8 +125,6 @@ io.on('connection', function(socket) {
               jsbApp.gameStatus=1 // player 2 turn
               jsbApp.wager = data.wager;
               jsbApp.roomID = data.roomID;
-              jsbApp.player1info = rooms[data.roomID].player1info;
-              jsbApp.player2info = rooms[data.roomID].player2info;
               jsbApp.gamebegin = jsbApp.gamebegin && true;
               if(!jsbApp.gamebegin && rooms[data.roomID].player1info.hasOwnProperty("currentevent")){
                 jsbApp.player1money = rooms[data.roomID].player1info.currentevent.cost;

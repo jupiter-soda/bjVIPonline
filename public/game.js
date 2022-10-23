@@ -16,7 +16,7 @@ socket.on("newGame",(data)=>{
 
 //Player 2 Joined
 socket.on("player2Joined",(data)=>{
-    transition(data)  ;
+    transition(data);
   })
   
 //Player 1 Joined
