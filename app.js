@@ -59,6 +59,11 @@ io.on('connection', function(socket) {
     //Whenever someone disconnects this piece of code executed
     socket.on('disconnect', function () {
       if(players.hasOwnProperty(socket.id)){
+        let jsbApp = rooms.hasOwnProperty(players[socket.id]) && rooms.hasOwnProperty(players[socket.id]).jsbApp?rooms[players[socket.id]].jsbApp:{};
+        if(jsbApp.length>0){
+          jsbApp.gameComplete = true;
+          socket.broadcast.emit("updateblackjacktable",{jsbApp:getjsbAppforClient(jsbApp)});
+        }
         socket.broadcast.emit("showmessage",{code:100, message:"Player has disconnected."});
         delete rooms[players[socket.id]];
         
@@ -85,7 +90,7 @@ io.on('connection', function(socket) {
               rooms[data.roomID].jsbApp.player1money = cost;
               rooms[data.roomID].jsbApp.player2money = cost;
               rooms[data.roomID].jsbApp.tablemoney = cost;
-              rooms[data.roomID].jsbApp.gamebegin = true;
+              // rooms[data.roomID].jsbApp.gamebegin = true;
               rooms[data.roomID].player2info = {id:socket.id,name:data.name};
               players[socket.id]=data.roomID;
               socket.join(data.roomID);
@@ -128,6 +133,7 @@ io.on('connection', function(socket) {
                 jsbApp.player2money = jsbApp.player1money;
                 jsbApp.tablemoney = jsbApp.player1money;
                 jsbApp.gamebegin = true;
+                jsbApp.online = true;
               }
               socket.join(data.roomID);
               io.in(data.roomID).emit("beginBlackjack",{jsbApp:getjsbAppforClient(jsbApp)});
@@ -303,6 +309,7 @@ function getjsbAppforClient(jsbApp) {
     filterjsbApp.player2money = jsbApp.player2money;
     filterjsbApp.tablemoney = jsbApp.tablemoney;
     filterjsbApp.gameComplete = jsbApp.gameComplete;
+    filterjsbApp.online = jsbApp.online;
     filterjsbApp.player1info = JSON.parse(JSON.stringify(jsbApp.player1info));
     delete filterjsbApp.player1info["id"];
     filterjsbApp.player2info = JSON.parse(JSON.stringify(jsbApp.player2info));
