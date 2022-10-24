@@ -30,7 +30,7 @@ app.get('/', (request, response) => {
     });
 });
 server.listen(process.env.PORT || 3000, () => {
-    console.log('listening on *:3000');
+    console.log('listening on *:'+process.env.PORT);
     console.log(server.address());
 });
 
@@ -64,8 +64,9 @@ io.on('connection', function(socket) {
           jsbApp.gameComplete = true;
           socket.broadcast.emit("updateblackjacktable",{jsbApp:getjsbAppforClient(jsbApp)});
         }
-        socket.broadcast.emit("showmessage",{code:100, message:"Player has disconnected."});
+        io.in(players[socket.id]).emit("showmessage",{code:100, message:"Player has disconnected."});
         delete rooms[players[socket.id]];
+        delete players[socket.id];
         
       }
       console.log('A user disconnected');
