@@ -91,8 +91,6 @@ io.on('connection', function(socket) {
               rooms[data.roomID].jsbApp.player2money = cost;
               rooms[data.roomID].jsbApp.tablemoney = cost;
               rooms[data.roomID].player2info = {id:socket.id,name:data.name};
-              jsbApp.player1info = rooms[data.roomID].player1info;
-              jsbApp.player2info = rooms[data.roomID].player2info;
               players[socket.id]=data.roomID;
               socket.join(data.roomID);
               socket.emit("player2Joined",{p2name: data.name,p1name:players[data.roomID]});
@@ -112,6 +110,8 @@ io.on('connection', function(socket) {
       if(rooms.hasOwnProperty(data.roomID) ){
           let jsbApp = rooms[data.roomID].jsbApp;
           if(jsbApp.gameStatus == 0 && !jsbApp.gameComplete && (wager > 0 && wager <= jsbApp.player2money)){
+              jsbApp.player1info = rooms[data.roomID].player1info;
+              jsbApp.player2info = rooms[data.roomID].player2info;
               jsbApp.player1Hand = [];
               jsbApp.player2Hand = [];
               jsbApp.player1Hand.push(drawcard(jsbApp));
