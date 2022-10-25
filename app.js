@@ -307,6 +307,7 @@ function getjsbAppforClient(jsbApp) {
     filterjsbApp.player1money = jsbApp.player1money;
     filterjsbApp.player2money = jsbApp.player2money;
     filterjsbApp.tablemoney = jsbApp.tablemoney;
+    filterjsbApp.wager = jsbApp.wager;
     filterjsbApp.gameComplete = jsbApp.gameComplete;
     filterjsbApp.online = jsbApp.online;
     filterjsbApp.player1info = JSON.parse(JSON.stringify(jsbApp.player1info));

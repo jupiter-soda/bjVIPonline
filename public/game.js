@@ -243,7 +243,7 @@ function loadwager(){
 function track(){
     let wins = firstPlayer?jsbApp.p1wins:jsbApp.p2wins;
     let losses = firstPlayer?jsbApp.p2wins:jsbApp.p1wins;
-    jsbAppElems.tracker.innerHTML = "<p>Wins: " + wins + " Draws: " + jsbApp.draws + " Losses: " + losses + "</p>";
+    jsbAppElems.tracker.innerHTML = "<p>Wins: " + wins + " Draws: " + jsbApp.draws + " Losses: " + losses + "</p><p>Wager:"+jsbApp.wager+"</p>";
 }
 function parsedatamodiframe(data){
     data = JSON.parse(data)
