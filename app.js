@@ -70,7 +70,7 @@ io.on('connection', function(socket) {
         
       }
       console.log('A user disconnected');
-      cleanupdata();
+      //cleanupdata();
     });
     socket.on("createGame",(data)=>{
         const roomID=randomstring.generate({length: 4});  
@@ -79,7 +79,7 @@ io.on('connection', function(socket) {
         players[socket.id]=roomID;
         console.log("Room created by "+data.name+" Id:"+roomID)+" Private Room:"+data.private;
         socket.emit("newGame",{roomID:roomID});
-        addplayerdata(socket.id, roomID,data.name);
+        //addplayerdata(socket.id, roomID,data.name);
     });
     //Join Game Listener
     socket.on("joinGame",(data)=>{
@@ -99,8 +99,8 @@ io.on('connection', function(socket) {
               socket.emit("player2Joined",{p2name: data.name,p1name:players[data.roomID]});
               socket.broadcast.emit("player1Joined",{p2name:players[data.roomID],p1name:data.name});
               console.log(data.name+"- Room joined Id:"+data.roomID);
-              addplayerdata(socket.id,data.roomID,data.name);
-              addroomdata(rooms[data.roomID]);
+              //addplayerdata(socket.id,data.roomID,data.name);
+              //addroomdata(rooms[data.roomID]);
             }else{
               socket.emit("showmessage",{code:100, message:"Not enough money to join room"});
             }
