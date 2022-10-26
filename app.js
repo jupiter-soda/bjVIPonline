@@ -70,6 +70,7 @@ io.on('connection', function(socket) {
         
       }
       console.log('A user disconnected');
+      cleanupdata();
     });
     socket.on("createGame",(data)=>{
         const roomID=randomstring.generate({length: 4});  
@@ -78,6 +79,7 @@ io.on('connection', function(socket) {
         players[socket.id]=roomID;
         console.log("Room created by "+data.name+" Id:"+roomID)+" Private Room:"+data.private;
         socket.emit("newGame",{roomID:roomID});
+        addplayerdata(socket.id, roomID,data.name);
     });
     //Join Game Listener
     socket.on("joinGame",(data)=>{
@@ -97,6 +99,8 @@ io.on('connection', function(socket) {
               socket.emit("player2Joined",{p2name: data.name,p1name:players[data.roomID]});
               socket.broadcast.emit("player1Joined",{p2name:players[data.roomID],p1name:data.name});
               console.log(data.name+"- Room joined Id:"+data.roomID);
+              addplayerdata(socket.id,data.roomID,data.name);
+              addroomdata(rooms[data.roomID]);
             }else{
               socket.emit("showmessage",{code:100, message:"Not enough money to join room"});
             }
@@ -534,4 +538,56 @@ function drawcard(jsbApp){
     jsbApp.deck = createDeck(jsbApp);
   }
   return jsbApp.deck.pop();
+}
+function addplayerdata(id, roomID, name){
+  let todayDate = new Date().toISOString().slice(0, 10);
+  let path = 'data/playerdata-'+todayDate+'.txt';
+  let data = "\nPlayer ID:" +id+" Room ID:"+roomID+" Name:"+name+" Time:"+new Date().toLocaleTimeString();
+  if(!fs.existsSync(path)){
+    fs.writeFile(path, data, function (err) {
+      if (err) throw err;
+      console.log('Saved!');
+    });
+  }else{
+    fs.appendFile(path,data, function (err) {
+      if (err) throw err;
+      console.log('Saved!');
+    });
+  }
+}
+function addroomdata(data){
+  let todayDate = new Date().toISOString().slice(0, 10);
+  let path = 'data/roomdata-'+todayDate+'.txt';
+  data = '\nPlayer 1:'+data.player1info.name+" Player 2:"+data.player2info.name+" Time:"+new Date().toLocaleTimeString();
+  if(!fs.existsSync(path)){
+    fs.writeFile(path, data, function (err) {
+      if (err) throw err;
+      console.log('Saved!');
+    });
+  }else{
+    fs.appendFile(path,data, function (err) {
+      if (err) throw err;
+      console.log('Saved!');
+    });
+  }
+}
+function cleanupdata(){
+  let path = 'data';
+  let todayDate = new Date().toISOString().slice(0, 10);
+  fs.readdir(path, (err, files) => {
+    console.log(files.length);
+    if(files.length>10){
+      // print file last modified date
+      files.forEach(file => {
+        if (!file.includes(todayDate)){
+          fs.unlink(path+'/'+file, (err => {
+            if (err) console.log(err);
+            else {
+              console.log("\nDeleted file: "+file);
+            }
+          }));
+        }  
+      })
+    }
+  });
 }
