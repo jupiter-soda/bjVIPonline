@@ -13,7 +13,9 @@ const e = require('express');
 const ACTION_SELECTING_WAGER = "Player 2 is selecting a wager";
 const ACTION_SELECTING_CHOICE_2 = "Player 2 is making their choice";
 const ACTION_SELECTING_CHOICE_1 = "Player 1 is making their choice";
-const blackjacktabletemplate = '<div class="blackjackplayarea"><div class="buttonbox divHidden" id="newgame"><div class="textupdates" id="textUpdates"> Press \'New Game\' to begin! </div> <div id="wagerbox">    How much would you like to bet?<br>    $<input type="text" id="wager" maxlength="255"><br></div>   <button alt="play" id="play">New Game</button> </div> <div class="buttonbox hidden" id="buttonBox"> <button alt="hit" id="hit">Hit</button> <button alt="stay" id="stay">Stay</button> </div> <table class="gamehands"> <tr> <th id="p1hand"> Player 1\'s  Hand </th> <th id="p2hand"> Player 2\'s Hand </th> </tr> <tr> <td id="p1cards">No cards dealt yet</td> <td id="p2cards">No cards dealt yet</td> </tr> </table> <div id="tracker" class="buttonbox"> <p>Wins: 0 Draws: 0 Losses: 0</p> </div> <div class="buttonbox"> <p><span class="bold" >Status: </span></p> <span id="status" class="bold redcard"></span> <!--<br /> <br /> <img src="img/stratchart.png" />--> </div></div>'; 
+const blackjacktabletemplate = '<div class="blackjackplayarea"><div class="buttonbox divHidden" id="newgame"><div class="textupdates" id="textUpdates"> Press \'New Game\' to begin! </div> <div id="wagerbox">    How much would you like to bet?<br>    $<input type="text" id="wager" maxlength="255"><br></div>   <button alt="play" id="play">New Game</button> </div> <div class="buttonbox hidden" id="buttonBox"> <button alt="hit" id="hit">Hit</button> <button alt="stay" id="stay">Stay</button> </div> <table class="gamehands"> <tr> <th id="p1hand"> Player 1\'s  Hand </th> <th id="p2hand"> Player 2\'s Hand </th> </tr> <tr> <td id="p1cards">No cards dealt yet</td> <td id="p2cards">No cards dealt yet</td> </tr> </table> <div id="tracker" class="buttonbox"> <p>Wins: 0 Draws: 0 Losses: 0</p> </div> <div class="buttonbox"> <p><span class="bold" >Status: </span></p> <span id="status" class="bold redcard"></span> <!--<br /> <br /> <img src="img/stratchart.png" />--></div><div id="chat"><button data-count="" onclick="loadchatpopup(this)">Chat</button></div></div>'; 
+const emptyeventtemplate = {slideimgpath:"",maxcount:'1',cost:'0'};
+const emptyassistanttemplate = {currentevent:''};
 app.use(express.static('public'));
 app.get('/', (request, response) => {
     response.writeHead(200, {
@@ -56,51 +58,60 @@ io.on('connection', function(socket) {
     // console.log(lib);
     console.log('A user connected');
     console.info(`Server side socket[${socket.id}] connection established.`);
+    players[socket.id] = {currentevent:emptyeventtemplate,assisstant:emptyassistanttemplate,chatenabled:false};
     //Whenever someone disconnects this piece of code executed
     socket.on('disconnect', function () {
       if(players.hasOwnProperty(socket.id)){
-        let jsbApp = rooms.hasOwnProperty(players[socket.id]) && rooms.hasOwnProperty(players[socket.id]).jsbApp?rooms[players[socket.id]].jsbApp:{};
-        if(jsbApp.length>0){
+        let jsbApp = rooms.hasOwnProperty(getRoomID(socket.id)) && rooms[getRoomID(socket.id)].hasOwnProperty("jsbApp")?rooms[getRoomID(socket.id)].jsbApp:{};
+        if(Object.keys(jsbApp).length>0){
           jsbApp.gameComplete = true;
-          socket.broadcast.emit("updateblackjacktable",{jsbApp:getjsbAppforClient(jsbApp)});
+          io.in(getRoomID(socket.id)).emit("updateblackjacktable",{jsbApp:getjsbAppforClient(jsbApp)});
         }
-        io.in(players[socket.id]).emit("showmessage",{code:100, message:"Player has disconnected."});
-        delete rooms[players[socket.id]];
-        delete players[socket.id];
+        io.in(getRoomID(socket.id)).emit("showmessage",{code:100, message:"Player has disconnected."});
+        delete rooms[getRoomID(socket.id)];
+        delete getRoomID(socket.id);
         
       }
       console.log('A user disconnected');
-      //cleanupdata();
+      cleanupdata();
     });
     socket.on("createGame",(data)=>{
         const roomID=randomstring.generate({length: 4});  
-        rooms[roomID] = {players : [socket.id], player1info:{id:socket.id,name:data.name}, private:data.private};
-        socket.join(roomID);        
-        players[socket.id]=roomID;
+        let iframe = data.playerinfo.iframe;
+        let playerobj = players[socket.id];
+        socket.join(roomID);       
+        rooms[roomID] = {players : [socket.id], player1info:{id:socket.id,name:data.name,iframe:data.playerinfo.iframe, assisstant:playerobj.assisstant, currentevent:playerobj.currentevent, chatenabled:playerobj.chatenabled}, private:data.private}; 
+        players[socket.id].roomID=roomID;
         console.log("Room created by "+data.name+" Id:"+roomID)+" Private Room:"+data.private;
         socket.emit("newGame",{roomID:roomID});
-        //addplayerdata(socket.id, roomID,data.name);
+        addplayerdata(socket.id, roomID,data.name);
     });
     //Join Game Listener
     socket.on("joinGame",(data)=>{
         if(rooms.hasOwnProperty(data.roomID) && rooms[data.roomID].players.length<2) {   
             var curr_players = rooms[data.roomID].players;
-            let cost = rooms[data.roomID].player1info.currentevent.cost;
-            if(data.money>=cost){
+            let cost = rooms[data.roomID].player1info.iframe ? rooms[data.roomID].player1info.currentevent.cost: 1000;
+            let playerinfo = data.playerinfo;
+            let playerobj = players[socket.id];
+            if(playerinfo.money>=cost){
               curr_players.push(socket.id);
               rooms[data.roomID].players = curr_players;
               rooms[data.roomID].jsbApp = initjsbApp();
               rooms[data.roomID].jsbApp.player1money = cost;
               rooms[data.roomID].jsbApp.player2money = cost;
               rooms[data.roomID].jsbApp.tablemoney = cost;
-              rooms[data.roomID].player2info = {id:socket.id,name:data.name};
-              players[socket.id]=data.roomID;
+              rooms[data.roomID].player2info = {id:socket.id,name:data.name,iframe:playerinfo.iframe, assisstant:playerobj.assisstant, currentevent:playerobj.currentevent, chatenabled:playerobj.chatenabled};
+              rooms[data.roomID].jsbApp.player1info = rooms[data.roomID].player1info;
+              rooms[data.roomID].jsbApp.player2info = rooms[data.roomID].player2info;
+              rooms[data.roomID].jsbApp.status = ACTION_SELECTING_WAGER;
+              rooms[data.roomID].jsbApp.chatenabled = playerobj.chatenabled && rooms[data.roomID].player1info.chatenabled;
+              players[socket.id].roomID=data.roomID;
               socket.join(data.roomID);
-              socket.emit("player2Joined",{p2name: data.name,p1name:players[data.roomID]});
-              socket.broadcast.emit("player1Joined",{p2name:players[data.roomID],p1name:data.name});
+              socket.emit("player2Joined",{p2name: data.name,p1name:players[data.roomID],jsbApp:getjsbAppforClient(rooms[data.roomID].jsbApp)});
+              socket.broadcast.emit("player1Joined",{p2name:players[data.roomID],p1name:data.name,jsbApp:getjsbAppforClient(rooms[data.roomID].jsbApp)});
               console.log(data.name+"- Room joined Id:"+data.roomID);
-              //addplayerdata(socket.id,data.roomID,data.name);
-              //addroomdata(rooms[data.roomID]);
+              addplayerdata(socket.id,data.roomID,data.name);
+              addroomdata(rooms[data.roomID]);
             }else{
               socket.emit("showmessage",{code:100, message:"Not enough money to join room"});
             }
@@ -130,14 +141,6 @@ io.on('connection', function(socket) {
               jsbApp.gameStatus=1 // player 2 turn
               jsbApp.wager = data.wager;
               jsbApp.roomID = data.roomID;
-              jsbApp.gamebegin = jsbApp.gamebegin && true;
-              if(!jsbApp.gamebegin && rooms[data.roomID].player1info.hasOwnProperty("currentevent")){
-                jsbApp.player1money = rooms[data.roomID].player1info.currentevent.cost;
-                jsbApp.player2money = jsbApp.player1money;
-                jsbApp.tablemoney = jsbApp.player1money;
-                jsbApp.gamebegin = true;
-                jsbApp.online = true;
-              }
               socket.join(data.roomID);
               io.in(data.roomID).emit("beginBlackjack",{jsbApp:getjsbAppforClient(jsbApp)});
               if(handTotal(jsbApp.player2Hand)<21){
@@ -221,10 +224,10 @@ io.on('connection', function(socket) {
               }
             }
           }
+          io.in(data.roomID).emit("updateblackjacktable",{jsbApp:getjsbAppforClient(jsbApp)});
         }else{
           console.log("incorrect game action :"+jsbApp.status+" "+jsbApp.gameStatus+' '+player1)
         }
-        io.in(data.roomID).emit("updateblackjacktable",{jsbApp:getjsbAppforClient(jsbApp)});
       }
   });
   socket.on("stayturn",(data)=>{
@@ -258,24 +261,52 @@ io.on('connection', function(socket) {
           jsbApp.status = jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
           io.in(data.roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
         }
+        io.in(data.roomID).emit("updateblackjacktable",{jsbApp:getjsbAppforClient(jsbApp)});
       }else{
         console.log("incorrect game action"+jsbApp.gameStatus+' '+player1)
       }
-      io.in(data.roomID).emit("updateblackjacktable",{jsbApp:getjsbAppforClient(jsbApp)});
     }
 
   });
   socket.on("initplayerdata",(data)=>{
-    if(rooms.hasOwnProperty(data.roomID)) {   
-      if(rooms[data.roomID].hasOwnProperty("player1info") && rooms[data.roomID].player1info.id == socket.id){
-        rooms[data.roomID].player1info.currentevent = data.currentevent;
-        rooms[data.roomID].player1info.assisstant = data.assisstant;
-      }else if(rooms[data.roomID].hasOwnProperty("player2info") && rooms[data.roomID].player2info.id == socket.id){
-        rooms[data.roomID].player2info.currentevent = data.currentevent;
-        rooms[data.roomID].player2info.assisstant = data.assisstant;
+    players[socket.id].currentevent = data.currentevent;
+    players[socket.id].assisstant = data.assisstant;
+    players[socket.id].chatenabled = data.chatenabled;
+  });
+  socket.on("sendchatmessage",(data)=>{
+    let jsbApp = rooms.hasOwnProperty(getRoomID(socket.id)) && rooms[getRoomID(socket.id)].hasOwnProperty("jsbApp")?rooms[getRoomID(socket.id)].jsbApp:{};    
+    if(Object.keys(jsbApp).length>0){
+      let player1 = socket.id == rooms[getRoomID(socket.id)].player1info.id;
+      let player2 = socket.id == rooms[getRoomID(socket.id)].player2info.id;
+      if(player1 || player2){
+        let messageObj = {};
+        messageObj.content = data.message;
+        messageObj.player1 = player1;
+        messageObj.playername = player1?jsbApp.player1info.name:jsbApp.player2info.name;
+        messageObj.classname = player1?"player1":"player2";
+        jsbApp.chat.message.push(messageObj);
+        if(player1){
+          jsbApp.chat.p1lastseen = jsbApp.chat.message.length;
+          socket.broadcast.emit("unreadchat",{count:jsbApp.chat.message.length-jsbApp.chat.p2lastseen, chat:jsbApp.chat});
+        }else{
+          jsbApp.chat.p2lastseen = jsbApp.chat.message.length;
+          socket.broadcast.emit("unreadchat",{count:jsbApp.chat.message.length-jsbApp.chat.p1lastseen, chat:jsbApp.chat});
+        }
+      }
+      // socket.broadcast.emit("updateblackjacktable",{jsbApp:getjsbAppforClient(jsbApp)});
+    }
+  });
+  socket.on("readchat",(data)=>{
+    let jsbApp = rooms.hasOwnProperty(getRoomID(socket.id)) && rooms[getRoomID(socket.id)].hasOwnProperty("jsbApp")?rooms[getRoomID(socket.id)].jsbApp:{};    
+    if(Object.keys(jsbApp).length>0){
+      let player1 = socket.id == rooms[getRoomID(socket.id)].player1info.id;
+      let player2 = socket.id == rooms[getRoomID(socket.id)].player2info.id;
+      if(player1){
+        jsbApp.chat.p1lastseen = data.count;
+      }else if(player2){
+        jsbApp.chat.p2lastseen = data.count;
       }
     }
-
   });
   socket.on("listrooms",(data)=>{
     let availablerooms = [];
@@ -314,10 +345,12 @@ function getjsbAppforClient(jsbApp) {
     filterjsbApp.wager = jsbApp.wager;
     filterjsbApp.gameComplete = jsbApp.gameComplete;
     filterjsbApp.online = jsbApp.online;
+    filterjsbApp.chatenabled = jsbApp.chatenabled;
     filterjsbApp.player1info = JSON.parse(JSON.stringify(jsbApp.player1info));
     delete filterjsbApp.player1info["id"];
     filterjsbApp.player2info = JSON.parse(JSON.stringify(jsbApp.player2info));
     delete filterjsbApp.player2info["id"];
+    filterjsbApp.chat = jsbApp.chat;
     return filterjsbApp;
 }
 
@@ -348,8 +381,9 @@ function initjsbApp(){
     jsbApp.player2money = 0;
     jsbApp.tablemoney = 0;
     jsbApp.wager = 0;
+    jsbApp.online = true;
     jsbApp.gameComplete = false;
-    // loadinitevents();
+    jsbApp.chat = {message:[],p1lastseen:0,p2lastseen:0};
     return jsbApp;
 }
 function createDeck(jsbApp) {
@@ -575,7 +609,6 @@ function cleanupdata(){
   let path = 'data';
   let todayDate = new Date().toISOString().slice(0, 10);
   fs.readdir(path, (err, files) => {
-    console.log(files.length);
     if(files.length>10){
       // print file last modified date
       files.forEach(file => {
@@ -590,4 +623,7 @@ function cleanupdata(){
       })
     }
   });
+}
+function getRoomID(id){
+  return players[id].roomID;
 }

@@ -159,3 +159,73 @@ button#stay
 .fl-table tr:nth-child(even) {
     background: #F8F8F8;
 }
+#chatpopup{
+    padding: 0em;
+}
+#chat{
+    float: right;
+    padding: 1em;
+}
+#chat button{
+    position: relative;
+    padding: 0.75em;
+}
+#chat button::before{
+    content: attr(data-count);
+    position: absolute;
+    top: -0.75em;
+    right: -0.75em;
+    width: 1.5em;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+    background-color: #ff0000;
+    color: #eee;
+}
+.chatcontainer{
+    display: flex;
+    flex-direction: column;
+}
+.player1{
+    display: flex;
+    flex-direction: column;
+    background-color: #a0eadeff;
+    border-radius: 2%;
+    margin: 0.5em;
+    padding: 0.5em;
+    padding-left: 1em;
+    width: 200px;
+}
+.player2{
+    display: flex;
+    flex-direction: column;
+    background-color: #5c6784ff;
+    border-radius: 2%;
+    margin: 0.5em;
+    padding: 0.5em;
+    padding-left: 1em;
+    width: 200px;
+}
+.chatname{
+    font-size: 12px;
+    border-bottom: 3px solid #808080;
+}
+#chatmsg{
+    width: 175px;
+}
+.msgbox{
+    margin: 0.5em;
+}
+.popup-header{
+    padding: 2px 16px;
+    background-color: #5cb85c;
+    color: white;
+    overflow: auto;
+}
+.cancel{
+    float:right;
+}
+.divHidden{
+    display: none;
+}

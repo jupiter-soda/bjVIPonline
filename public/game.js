@@ -1,15 +1,15 @@
 let firstPlayer=false;
+let classname="player2";
+let playername="";
 let roomID;
 let jsbApp = {};
 let jsbAppElems = {};
-let userinfo = {money:100};
+let userinfo = {money:1000,iframe:false,chatenabled:false};
 
 //New Game Created Listener
 socket.on("newGame",(data)=>{
     $(".newRoom").hide();
     $(".joinRoom").hide();
-    let message = JSON.stringify({method:"initdata"});
-    window.top.postMessage(message, "*");
     $("#message").html("Waiting for player 2,Room ID: "+data.roomID).show();
     roomID=data.roomID;
 })
@@ -21,15 +21,14 @@ socket.on("player2Joined",(data)=>{
   
 //Player 1 Joined
 socket.on("player1Joined",(data)=>{
-    transition(data)  ;
+    transition(data);
 })
 socket.on("beginBlackjack",(data)=>{
     loadBlackjack(data);
 })
 socket.on("updateblackjacktable",(data)=>{
     loadBlackjack(data);
-    let message = JSON.stringify({method:"updatedata",jsbApp:data.jsbApp});
-    window.top.postMessage(message, "*");
+    sendmessagefromiframe(JSON.stringify({method:"updatedata","jsbApp":data.jsbApp}));
 })
 socket.on("player2choice",(data)=>{
     jsbAppElems.newgame.classList.add("hidden");
@@ -55,8 +54,8 @@ socket.on("player2wager",(data)=>{
         loadwager();
     }else{
         jsbAppElems.newgame.classList.add('hidden');
-        let message = JSON.stringify({method:"gameComplete", jsbApp:data.jsbApp});
-        window.top.postMessage(message, "*");
+        sendmessagefromiframe(JSON.stringify({method:"gameComplete", jsbApp:data.jsbApp}));
+
     }
 });
 socket.on("showmessage",(data)=>{
@@ -67,10 +66,17 @@ socket.on("showmessage",(data)=>{
         console.log(data);
     }
 });
+socket.on("unreadchat",(data)=>{
+    $('#chat button').attr('data-count',data.count);
+    jsbApp.chat = data.chat;
+    if(document.getElementById('chatpopup').open){
+        loadchatmessage();
+    }
+});
 socket.on("availablerooms",(data)=>{
     $('#roomslist').html('');
     let rooms = data.rooms;
-    let headers = ["RoomID", "Player","Model","Event"];
+    let headers = ["RoomID", "Player","Model","Event","Cost"];
     let table = document.createElement("TABLE");  //makes a table element for the page
         
     for(let i = 0; i < rooms.length; i++) {
@@ -78,8 +84,11 @@ socket.on("availablerooms",(data)=>{
         let playerinfo = rooms[i].playerinfo;
         row.insertCell(0).innerHTML = rooms[i].roomID;
         row.insertCell(1).innerHTML = playerinfo.name;
-        row.insertCell(2).innerHTML = playerinfo.assisstant.name;
-        row.insertCell(3).innerHTML = playerinfo.assisstant.currentevent;
+        if(playerinfo.iframe){
+            row.insertCell(2).innerHTML = playerinfo.assisstant.name;
+            row.insertCell(3).innerHTML = playerinfo.assisstant.currentevent;
+            row.insertCell(4).innerHTML = playerinfo.currentevent.cost;
+        }
     }
 
     let header = table.createTHead();
@@ -105,10 +114,21 @@ const transition=(data)=>{
     $(".player1 .name").html(data.p1name);
     $(".player2 .name").html(data.p2name);
     $("#message").html(data.p2name+" is here!").show();
-    $.get( "loadtemplate", function(datahtml) {
+    $.get( "loadtemplate",{roomID:roomID}, function(datahtml) {
         $('#blackjackdiv').html(datahtml);
         initjsbGameApp();
         loadwager();
+        loadBlackjack(data);
+        if(!data.jsbApp.chatenabled){
+            $('#chat').hide();
+        }
+        const dialog = document.querySelector('dialog');
+        dialog.addEventListener('close', (event) => {
+            $('#chat button').attr('data-count',"");
+        });
+        dialog.querySelector("button.cancel").addEventListener("click", () => {
+            dialog.close();
+          });
         $('.container').hide();
     });
 }
@@ -120,12 +140,14 @@ var loadpage = function(){
         //Create Game Event Emitter
     $(".createBtn").click(function(){
         firstPlayer=true;
+        classname="player1";
         if($("input[name=p1name").val().length==0){
             alert("Fill in a name");
             return;
         }
         const playerName=$("input[name=p1name").val();
-        socket.emit('createGame',{name:playerName,private:document.getElementById('privateroom').checked});
+        playername = playerName;
+        socket.emit('createGame',{name:playerName,private:document.getElementById('privateroom').checked,playerinfo:userinfo});
     });
     //Join Game Event Emitter
     $(".joinBtn").click(function(){
@@ -133,21 +155,22 @@ var loadpage = function(){
             alert("Fill in a name");
             return;
         }
+        window.location !== window.parent.location?true:false
         const playerName=$("input[name=p2name").val();
-        roomID=$("input[name=roomID").val();
-        let message = JSON.stringify({method:"initdata"});
-        window.top.postMessage(message, "*");    
+        playername = playerName;
+        roomID=$("input[name=roomID").val(); 
         socket.emit('joinGame',{
             name:playerName,
             roomID:roomID,
-            money:userinfo.money
+            playerinfo:userinfo
         });
     });
     $("#listrooms").click(function(){
         socket.emit('listrooms');
     });
-    let message = JSON.stringify({method:"inituserinfo"});
-    window.top.postMessage(message, "*");    
+    userinfo.iframe = window.location !== window.parent.location?true:false;
+    sendmessagefromiframe(JSON.stringify({method:"inituserinfo"}));  
+    sendmessagefromiframe(JSON.stringify({method:"initdata"}));
 }
 function initjsbGameApp(){
     // Store important elements in variables for later manipulation
@@ -169,8 +192,6 @@ function initjsbGameApp(){
     jsbAppElems.playButton.addEventListener("click", beginGame);
     jsbAppElems.hitButton.addEventListener("click", clickHitButton);
     jsbAppElems.stayButton.addEventListener("click", clickStayButton);
-
-    
 }
 function beginGame(){
     socket.emit("beginGame",{roomID:roomID,wager:jsbAppElems.bet.value});
@@ -184,8 +205,7 @@ function loadBlackjack(data){
     jsbAppElems.status.innerHTML = jsbApp.status;
     jsbApp.dealer = firstPlayer;
     track();
-    let message = JSON.stringify({method:"updatedata",jsbApp:jsbApp});
-    window.top.postMessage(message, "*"); 
+    sendmessagefromiframe(JSON.stringify({method:"updatedata",jsbApp:data.jsbApp}));
 }
 function loadHand(num,hand,carddiv,textdiv){
     carddiv.innerHTML = '';
@@ -245,20 +265,66 @@ function track(){
     let losses = firstPlayer?jsbApp.p2wins:jsbApp.p1wins;
     jsbAppElems.tracker.innerHTML = "<p>Wins: " + wins + " Draws: " + jsbApp.draws + " Losses: " + losses + "</p><p>Wager:"+jsbApp.wager+"</p>";
 }
+function loadchatpopup(obj){
+    $(obj).attr('data-count',"");
+    loadchatmessage();
+    document.getElementById('chatpopup').showModal();
+    socket.emit('readchat',{count: jsbApp.chat.message.length});
+}
+function loadchatmessage(){
+    let chatcontainer = document.createElement('div');
+    chatcontainer.setAttribute("id","chatcontainer");
+    chatcontainer.setAttribute("class","chatcontainer");
+    for(var i in jsbApp.chat.message){
+        let messagecont = document.createElement('div');
+        messagecont.setAttribute("class",jsbApp.chat.message[i].classname);
+        let namecont = document.createElement('span');
+        namecont.setAttribute("class","chatname");
+        namecont.innerHTML=jsbApp.chat.message[i].playername;
+        messagecont.append(namecont);
+        let message = document.createElement('span');
+        message.setAttribute("player1",jsbApp.chat.message[i].player1);
+        message.innerHTML=jsbApp.chat.message[i].content;
+        messagecont.append(message)
+        chatcontainer.append(messagecont);
+    }
+    document.getElementById("chatarea").innerHTML = chatcontainer.outerHTML;
+}
+function sendchatmessage(){
+    let message = document.getElementById("chatmsg").value
+    if(message.length==0){
+        return;
+    }
+    document.getElementById("chatmsg").value = "";
+    let messageObj = {};
+    messageObj.content = message;
+    messageObj.player1 = firstPlayer;
+    messageObj.classname = classname;
+    messageObj.playername = playername;
+    jsbApp.chat.message.push(messageObj);
+    loadchatmessage();
+    socket.emit('sendchatmessage',{message:message});
+}
 function parsedatamodiframe(data){
     data = JSON.parse(data)
     var method = data.method;
     switch(method) {
       case "initplayerdata":
-        socket.emit('initplayerdata',{roomID:roomID,currentevent:data.currentevent,assisstant:data.assisstant});
+        socket.emit('initplayerdata',{currentevent:data.currentevent,assisstant:data.assisstant,chatenabled:userinfo.chatenabled});
         break;
     case "inituserinfo":
-        userinfo = {money:data.money};
+        userinfo.money = data.money?data.money:userinfo.money;
+        userinfo.chatenabled = data.chatenabled;
         break;
     default:
         console.log("Invalid message");
     } 
   }
+function sendmessagefromiframe(message){
+    if(userinfo.iframe){
+        window.top.postMessage(message, "*");
+    }
+}
 window.addEventListener('message', function(event) {
     // console.log("Message received from the parent: " + event.data); // Message received from parent
     parsedatamodiframe(event.data);
