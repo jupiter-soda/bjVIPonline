@@ -122,6 +122,9 @@ const transition=(data)=>{
         if(!data.jsbApp.chatenabled){
             $('#chat').hide();
         }
+        if(firstPlayer){
+            jsbAppElems.newgame.classList.add("divHidden");
+        }
         const dialog = document.querySelector('dialog');
         dialog.addEventListener('close', (event) => {
             $('#chat button').attr('data-count',"");
