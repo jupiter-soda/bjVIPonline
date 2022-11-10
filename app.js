@@ -13,7 +13,7 @@ const e = require('express');
 const ACTION_SELECTING_WAGER = "Player 2 is selecting a wager";
 const ACTION_SELECTING_CHOICE_2 = "Player 2 is making their choice";
 const ACTION_SELECTING_CHOICE_1 = "Player 1 is making their choice";
-const blackjacktabletemplate = '<div class="blackjackplayarea"><div class="buttonbox" id="newgame"><div class="textupdates" id="textUpdates"> Press \'New Game\' to begin! </div> <div id="wagerbox">    How much would you like to bet?<br>    $<input type="text" id="wager" maxlength="255"><br></div>   <button alt="play" id="play">New Game</button> </div> <div class="buttonbox hidden" id="buttonBox"> <button alt="hit" id="hit">Hit</button> <button alt="stay" id="stay">Stay</button> </div> <table class="gamehands"> <tr> <th id="p1hand"> Player 1\'s  Hand </th> <th id="p2hand"> Player 2\'s Hand </th> </tr> <tr> <td id="p1cards">No cards dealt yet</td> <td id="p2cards">No cards dealt yet</td> </tr> </table> <div id="tracker" class="buttonbox"> <p>Wins: 0 Draws: 0 Losses: 0</p> </div> <div class="buttonbox"> <p><span class="bold" >Status: </span></p> <span id="status" class="bold redcard"></span> <!--<br /> <br /> <img src="img/stratchart.png" />--></div><div id="chat"><button data-count="" onclick="loadchatpopup(this)">Chat</button></div></div>'; 
+const blackjacktabletemplate = '<div class="blackjackplayarea"><div class="buttonbox" id="newgame"><div class="textupdates" id="textUpdates"> Press \'New Game\' to begin! </div> <div id="wagerbox">    How much would you like to bet?<br>    $<input type="text" id="wager" maxlength="255"><br></div>   <button alt="play" id="play">New Game</button> </div> <div class="buttonbox hidden" id="buttonBox"> <button alt="hit" id="hit">Hit</button> <button alt="stay" id="stay">Stay</button> </div> <table class="gamehands"> <tr> <th id="p1hand"> Player 1\'s  Hand </th> <th id="p2hand"> Player 2\'s Hand </th> </tr> <tr> <td><div id="p1cards" class="playercards">No cards dealt yet</div></td> <td><div id="p2cards" class="playercards">No cards dealt yet</div></td> </tr> </table> <div id="tracker" class="buttonbox"> <p>Wins: 0 Draws: 0 Losses: 0</p> </div> <div class="buttonbox"> <p><span class="bold" >Status: </span></p> <span id="status" class="bold redcard"></span> <!--<br /> <br /> <img src="img/stratchart.png" />--></div><div id="chat"><button data-count="" onclick="loadchatpopup(this)">Chat</button></div></div>'; 
 const emptyeventtemplate = {slideimgpath:"",maxcount:'1',cost:'0'};
 const emptyassistanttemplate = {currentevent:''};
 app.use(express.static('public'));
@@ -175,7 +175,7 @@ io.on('connection', function(socket) {
             if(total>21){
               player1wins(jsbApp);
               jsbApp.gameStatus = 0 //game complete
-              jsbApp.status = jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
+              jsbApp.status = !jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
               io.in(data.roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
               return;
             }else if(total==21){
@@ -183,7 +183,7 @@ io.on('connection', function(socket) {
               if(p1total==total){
                 gametie(jsbApp);
                 jsbApp.gameStatus = 0; //game complete
-                jsbApp.status = jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
+                jsbApp.status = !jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
                 io.in(data.roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
               }else if(p1total<total){
                 jsbApp.gameStatus = 2 //player 1 (dealer) turn
@@ -198,7 +198,7 @@ io.on('connection', function(socket) {
             if(total>21){
               player2wins(jsbApp);
               jsbApp.gameStatus = 0 //game complete
-              jsbApp.status = jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
+              jsbApp.status = !jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
               io.in(data.roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
               return;
             }else if(total==21){
@@ -209,14 +209,14 @@ io.on('connection', function(socket) {
               }else{
                 player1wins(jsbApp);
               }
-              jsbApp.status = jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
+              jsbApp.status = !jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
               io.in(data.roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
             }else{
               let p2total = handTotal(jsbApp.player2Hand);
               if(total>p2total){
                 player1wins(jsbApp);
                 jsbApp.gameStatus = 0 //game complete
-                jsbApp.status = jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
+                jsbApp.status = !jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
                 io.in(data.roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
               }else{
                 jsbApp.status = ACTION_SELECTING_CHOICE_1
@@ -258,7 +258,7 @@ io.on('connection', function(socket) {
             player2wins(jsbApp);
           }
           jsbApp.gameStatus = 0;  // game end
-          jsbApp.status = jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
+          jsbApp.status = !jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
           io.in(data.roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
         }
         io.in(data.roomID).emit("updateblackjacktable",{jsbApp:getjsbAppforClient(jsbApp)});
@@ -320,7 +320,7 @@ io.on('connection', function(socket) {
   });
 
 });
-const hiddencardtemp =  new card("", 0, "Hidden Card", "hidden");
+const hiddencardtemp =  new card("", 0, "Hidden Card", "hidden", "black");
 
 function getjsbAppforClient(jsbApp) {
     let filterjsbApp = {};
@@ -354,11 +354,12 @@ function getjsbAppforClient(jsbApp) {
     return filterjsbApp;
 }
 
-function card(suit, value, name, key) {
+function card(suit, value, name, key, color) {
     this.suit = suit; // string of c/d/h/s
     this.value = value; // number 1 - 10
     this.name = name; // string of the full card name
     this.key = key;   // used for computing counting
+    this.color = color;
 }
 //game code
 function initjsbApp(){
@@ -368,6 +369,8 @@ function initjsbApp(){
     jsbApp.player2Hand = [];
     jsbApp.deck = [];
     jsbApp.suits = ['clubs <span class="bold">&#9827</span>', 'diamonds <span class="redcard">&#9830</span>', 'hearts <span class="redcard">&#9829</span>', 'spades <span class="bold">&#9824</span>'];
+    jsbApp.suits = '♠︎ ♥︎ ♣︎ ♦︎'.split(' ');
+    jsbApp.color = ['black', 'red', 'black', 'red'];
     jsbApp.values = ["Ace", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Jack", "Queen", "King"];
     jsbApp.keys = ["A", 2, 3, 4, 5, 6, 7, 8, 9, 10, "J", "Q", "K"];
     jsbApp.gameStatus = 0; // flag that game has not yet been won
@@ -403,7 +406,7 @@ function createDeck(jsbApp) {
             {
                 cardTitle += (jsbApp.values[b] + " of " + jsbApp.suits[a] + " (" + cardValue + " or 11)");
             }
-            var newCard = new card(jsbApp.suits[a], cardValue, cardTitle, jsbApp.keys[b]);
+            var newCard = new card(jsbApp.suits[a], cardValue, cardTitle, jsbApp.keys[b], jsbApp.color[a]);
             deck.push(newCard);
             
 

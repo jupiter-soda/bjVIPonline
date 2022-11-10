@@ -214,9 +214,9 @@ function loadHand(num,hand,carddiv,textdiv){
     carddiv.innerHTML = '';
     var total = handTotal(hand);
     for(let i in hand){
-        $(carddiv).append("<li class='gamecards'>" + hand[i].name + "</li>");
+        $(carddiv).append("<div class='gamecards'>" + createCard(hand[i]).outerHTML + "</div>");
     }
-    textdiv.innerHTML = "Player "+num+" Hand (" + total + ")"; // update player hand total
+    textdiv.innerHTML = "Player "+num+" Hand <br> (" + total + ")"; // update player hand total
    
 }
 function clickHitButton(){
@@ -253,7 +253,7 @@ function handTotal(hand) {
         }
     }
     // console.log("Total: " + total);
-    return hidden?total+' + Hidden card':total;
+    return hidden?'Hidden card +'+total:total;
 }
 function loadwager(){
     if(!firstPlayer){
@@ -332,3 +332,136 @@ window.addEventListener('message', function(event) {
     // console.log("Message received from the parent: " + event.data); // Message received from parent
     parsedatamodiframe(event.data);
   });
+
+  const suitPositions = [
+    [
+      [0, 0]
+    ],
+    [
+      [0, -1],
+      [0, 1, true]
+    ],
+    [
+      [0, -1],
+      [0, 0],
+      [0, 1, true]
+    ],
+    [
+      [-1, -1], [1, -1],
+      [-1, 1, true], [1, 1, true]
+    ],
+    [
+      [-1, -1], [1, -1],
+      [0, 0],
+      [-1, 1, true], [1, 1, true]
+    ],
+    [
+      [-1, -1], [1, -1],
+      [-1, 0], [1, 0],
+      [-1, 1, true], [1, 1, true]
+    ],
+    [
+      [-1, -1], [1, -1],
+      [0, -0.5],
+      [-1, 0], [1, 0],
+      [-1, 1, true], [1, 1, true]
+    ],
+    [
+      [-1, -1], [1, -1],
+      [0, -0.5],
+      [-1, 0], [1, 0],
+      [0, 0.5, true],
+      [-1, 1, true], [1, 1, true]
+    ],
+    [
+      [-1, -1], [1, -1],
+      [-1, -1 / 3], [1, -1 / 3],
+      [0, 0],
+      [-1, 1 / 3, true], [1, 1 / 3, true],
+      [-1, 1, true], [1, 1, true]
+    ],
+    [
+      [-1, -1], [1, -1],
+      [0, -2 / 3],
+      [-1, -1 / 3], [1, -1 / 3],
+      [-1, 1 / 3, true], [1, 1 / 3, true],
+      [0, 2 / 3, true],
+      [-1, 1, true], [1, 1, true]
+    ],
+    [
+      [0, 0]
+    ],
+    [
+      [0, 0]
+    ],
+    [
+      [0, 0]
+    ]
+  ];
+  
+  const el = (tagName, attributes, children) => {
+    const element = document.createElement(tagName);
+  
+    if (attributes) {
+      for (const attrName in attributes) {
+        element.setAttribute(attrName, attributes[attrName]);
+      }
+    }
+  
+    if (children) {
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i];
+        if (typeof child === 'string') {
+          element.appendChild(document.createTextNode(child));
+        } else {
+          element.appendChild(child);
+        }
+      }
+    }
+  
+    return element;
+  };
+  
+  const div = (a, c) => el('div', a, c);
+  
+  const createSuit = (suit) => (pos) => {
+    const [ x, y, mirrored ] = pos;
+    const mirroredClass = mirrored ? ' mirrored' : '';
+    return div({
+      class: 'card-suit' + mirroredClass,
+      style: `left: ${x * 100}%; top: ${y * 100}%;`
+    }, [ suit ]);
+  };
+  
+  const createCard = (card) => {
+    const rank = card.key.toString();
+    const suit = card.suit;
+    const colorClass = 'card ' + card.color;
+    if(card.value == 0){
+        const hiddencard = document.createElement("div");
+        hiddencard.classList.add("card");
+        hiddencard.classList.add("card-pattern");
+        return hiddencard;
+    }
+    return div({ class: colorClass }, [
+      div({ class: 'card-suits' },
+        suitPositions[card.value % 13].map(createSuit(suit))
+      ),
+      div({ class: 'card-topleft' }, [
+        div({ class: 'card-corner-rank' }, [
+          rank
+        ]),
+        div({ class: 'card-corner-suit' }, [
+          suit
+        ])
+      ]),
+      div({ class: 'card-bottomright' }, [
+        div({ class: 'card-corner-rank' }, [
+          rank
+        ]),
+        div({ class: 'card-corner-suit' }, [
+          suit
+        ])
+      ])
+    ]);
+  };
