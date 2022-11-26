@@ -4,7 +4,7 @@ let playername="";
 let roomID;
 let jsbApp = {};
 let jsbAppElems = {};
-let userinfo = {money:1000,iframe:false,chatenabled:false};
+let userinfo = {money:1000,iframe:false,chatenabled:false,gamename:""};
 
 //New Game Created Listener
 socket.on("newGame",(data)=>{
@@ -76,7 +76,7 @@ socket.on("unreadchat",(data)=>{
 socket.on("availablerooms",(data)=>{
     $('#roomslist').html('');
     let rooms = data.rooms;
-    let headers = ["RoomID", "Player","Model","Event","Cost"];
+    let headers = ["RoomID", "Player","Model","Event","Cost", "Game"];
     let table = document.createElement("TABLE");  //makes a table element for the page
         
     for(let i = 0; i < rooms.length; i++) {
@@ -87,7 +87,8 @@ socket.on("availablerooms",(data)=>{
         if(playerinfo.iframe){
             row.insertCell(2).innerHTML = playerinfo.assisstant.name;
             row.insertCell(3).innerHTML = playerinfo.assisstant.currentevent;
-            row.insertCell(4).innerHTML = playerinfo.currentevent.cost;
+            row.insertCell(4).innerHTML = playerinfo.money;
+            row.insertCell(5).innerHTML = playerinfo.gamename;
         }
     }
 
@@ -150,7 +151,15 @@ var loadpage = function(){
         }
         const playerName=$("input[name=p1name").val();
         playername = playerName;
-        socket.emit('createGame',{name:playerName,private:document.getElementById('privateroom').checked,playerinfo:userinfo});
+        if($("input[name=money").val().length!=0){
+          if(userinfo.money<$("input[name=money]").val()){
+            alert("Insufficient amount of money");
+            return;
+          }else{
+            userinfo.money = $("input[name=money]").val();
+          }
+          socket.emit('createGame',{name:playerName,private:document.getElementById('privateroom').checked,playerinfo:userinfo});
+        }
     });
     //Join Game Event Emitter
     $(".joinBtn").click(function(){
@@ -174,6 +183,9 @@ var loadpage = function(){
     userinfo.iframe = window.location !== window.parent.location?true:false;
     sendmessagefromiframe(JSON.stringify({method:"inituserinfo"}));  
     sendmessagefromiframe(JSON.stringify({method:"initdata"}));
+    if(!userinfo.iframe){
+      $("input[name=money]").parent().hide();
+    }
 }
 function initjsbGameApp(){
     // Store important elements in variables for later manipulation
@@ -313,11 +325,21 @@ function parsedatamodiframe(data){
     var method = data.method;
     switch(method) {
       case "initplayerdata":
-        socket.emit('initplayerdata',{currentevent:data.currentevent,assisstant:data.assisstant,chatenabled:userinfo.chatenabled});
+        if($("input[name=p1name]").val().length==0 && $("input[name=p2name]").val().length==0){
+          $("input[name=p1name]").val(userinfo.playername);
+          $("input[name=p2name]").val(userinfo.playername);
+        }
+        if($("input[name=money]").val().length==0){
+          let money = userinfo.money>data.currentevent.cost?data.currentevent.cost:userinfo.money;
+          $("input[name=money]").val(money);
+        }
+        socket.emit('initplayerdata',{currentevent:data.currentevent,assisstant:data.assisstant,chatenabled:userinfo.chatenabled,money:userinfo.money});
         break;
     case "inituserinfo":
         userinfo.money = data.money?data.money:userinfo.money;
+        userinfo.playername = data.name;
         userinfo.chatenabled = data.chatenabled;
+        userinfo.gamename = data.gamename;
         break;
     default:
         console.log("Invalid message");

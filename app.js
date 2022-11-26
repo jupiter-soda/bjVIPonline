@@ -77,10 +77,9 @@ io.on('connection', function(socket) {
     });
     socket.on("createGame",(data)=>{
         const roomID=randomstring.generate({length: 4});  
-        let iframe = data.playerinfo.iframe;
         let playerobj = players[socket.id];
         socket.join(roomID);       
-        rooms[roomID] = {players : [socket.id], player1info:{id:socket.id,name:data.name,iframe:data.playerinfo.iframe, assisstant:playerobj.assisstant, currentevent:playerobj.currentevent, chatenabled:playerobj.chatenabled}, private:data.private}; 
+        rooms[roomID] = {players : [socket.id], player1info:{id:socket.id,name:data.name,iframe:data.playerinfo.iframe,money:data.playerinfo.money, assisstant:playerobj.assisstant, currentevent:playerobj.currentevent, chatenabled:playerobj.chatenabled, gamename:data.playerinfo.gamename}, private:data.private}; 
         players[socket.id].roomID=roomID;
         console.log("Room created by "+data.name+" Id:"+roomID)+" Private Room:"+data.private;
         socket.emit("newGame",{roomID:roomID});
@@ -90,7 +89,7 @@ io.on('connection', function(socket) {
     socket.on("joinGame",(data)=>{
         if(rooms.hasOwnProperty(data.roomID) && rooms[data.roomID].players.length<2) {   
             var curr_players = rooms[data.roomID].players;
-            let cost = rooms[data.roomID].player1info.iframe ? rooms[data.roomID].player1info.currentevent.cost: 1000;
+            let cost = rooms[data.roomID].player1info.money>0 ? rooms[data.roomID].player1info.money: 1000;
             let playerinfo = data.playerinfo;
             let playerobj = players[socket.id];
             if(playerinfo.money>=cost){
@@ -100,7 +99,7 @@ io.on('connection', function(socket) {
               rooms[data.roomID].jsbApp.player1money = cost;
               rooms[data.roomID].jsbApp.player2money = cost;
               rooms[data.roomID].jsbApp.tablemoney = cost;
-              rooms[data.roomID].player2info = {id:socket.id,name:data.name,iframe:playerinfo.iframe, assisstant:playerobj.assisstant, currentevent:playerobj.currentevent, chatenabled:playerobj.chatenabled};
+              rooms[data.roomID].player2info = {id:socket.id,name:data.name,iframe:playerinfo.iframe, assisstant:playerobj.assisstant, currentevent:playerobj.currentevent, chatenabled:playerobj.chatenabled, gamename:data.playerinfo.gamename};
               rooms[data.roomID].jsbApp.player1info = rooms[data.roomID].player1info;
               rooms[data.roomID].jsbApp.player2info = rooms[data.roomID].player2info;
               rooms[data.roomID].jsbApp.status = ACTION_SELECTING_WAGER;
@@ -272,6 +271,7 @@ io.on('connection', function(socket) {
     players[socket.id].currentevent = data.currentevent;
     players[socket.id].assisstant = data.assisstant;
     players[socket.id].chatenabled = data.chatenabled;
+    players[socket.id].money = data.money;
   });
   socket.on("sendchatmessage",(data)=>{
     let jsbApp = rooms.hasOwnProperty(getRoomID(socket.id)) && rooms[getRoomID(socket.id)].hasOwnProperty("jsbApp")?rooms[getRoomID(socket.id)].jsbApp:{};    

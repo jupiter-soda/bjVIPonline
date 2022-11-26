@@ -9,6 +9,7 @@ body{
     box-shadow: 0 1px 3px rgba(0,0,0,0.5);
     display: table;
     padding: 1em;
+    margin: auto;
   	color: #3a3a3a;
 }
 
