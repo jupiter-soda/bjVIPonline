@@ -4,6 +4,7 @@ let playername="";
 let roomID;
 let jsbApp = {};
 let jsbAppElems = {};
+let botmode = false;
 let userinfo = {money:1000,iframe:false,chatenabled:false,gamename:""};
 
 //New Game Created Listener
@@ -143,23 +144,7 @@ var loadpage = function(){
     $('#message').hide();
         //Create Game Event Emitter
     $(".createBtn").click(function(){
-        firstPlayer=true;
-        classname="player1";
-        if($("input[name=p1name").val().length==0){
-            alert("Fill in a name");
-            return;
-        }
-        const playerName=$("input[name=p1name").val();
-        playername = playerName;
-        if($("input[name=money").val().length!=0){
-          if(userinfo.money<$("input[name=money]").val()){
-            alert("Insufficient amount of money");
-            return;
-          }else{
-            userinfo.money = $("input[name=money]").val();
-          }
-          socket.emit('createGame',{name:playerName,private:document.getElementById('privateroom').checked,playerinfo:userinfo});
-        }
+        createGame();
     });
     //Join Game Event Emitter
     $(".joinBtn").click(function(){
@@ -180,12 +165,40 @@ var loadpage = function(){
     $("#listrooms").click(function(){
         socket.emit('listrooms');
     });
+    $("#createbotmatch").click(function(){
+      botmode = true;
+      createGame();
+    });
     userinfo.iframe = window.location !== window.parent.location?true:false;
     sendmessagefromiframe(JSON.stringify({method:"inituserinfo"}));  
     sendmessagefromiframe(JSON.stringify({method:"initdata"}));
     if(!userinfo.iframe){
       $("input[name=money]").parent().hide();
     }
+}
+function createGame(){
+  firstPlayer=true;
+  classname="player1";
+  if($("input[name=p1name").val().length==0){
+      alert("Fill in a name");
+      return;
+  }
+  const playerName=$("input[name=p1name").val();
+  playername = playerName;
+  if($("input[name=money").val().length!=0){
+    if(userinfo.money<$("input[name=money]").val()){
+      alert("Insufficient amount of money");
+      return;
+    }else{
+      userinfo.money = $("input[name=money]").val();
+    }
+  }
+  if(botmode){
+    firstPlayer=false;
+    socket.emit('createbotmatch',{name:playerName,private:document.getElementById('privateroom').checked,playerinfo:userinfo});
+  }else{
+    socket.emit('createGame',{name:playerName,private:document.getElementById('privateroom').checked,playerinfo:userinfo});
+  }
 }
 function initjsbGameApp(){
     // Store important elements in variables for later manipulation
@@ -333,7 +346,7 @@ function parsedatamodiframe(data){
           let money = userinfo.money>data.currentevent.cost?data.currentevent.cost:userinfo.money;
           $("input[name=money]").val(money);
         }
-        socket.emit('initplayerdata',{currentevent:data.currentevent,assisstant:data.assisstant,chatenabled:userinfo.chatenabled,money:userinfo.money});
+        socket.emit('initplayerdata',{currentevent:data.currentevent,assisstant:data.assisstant,chatenabled:userinfo.chatenabled,money:userinfo.money, randomevent:data.randomevent});
         break;
     case "inituserinfo":
         userinfo.money = data.money?data.money:userinfo.money;

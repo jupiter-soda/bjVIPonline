@@ -76,49 +76,14 @@ io.on('connection', function(socket) {
       // cleanupdata();
     });
     socket.on("createGame",(data)=>{
-        const roomID=randomstring.generate({length: 4});  
-        let playerobj = players[socket.id];
-        socket.join(roomID);       
-        rooms[roomID] = {players : [socket.id], player1info:{id:socket.id,name:data.name,iframe:data.playerinfo.iframe,money:data.playerinfo.money, assisstant:playerobj.assisstant, currentevent:playerobj.currentevent, chatenabled:playerobj.chatenabled, gamename:data.playerinfo.gamename}, private:data.private}; 
-        players[socket.id].roomID=roomID;
-        console.log("Room created by "+data.name+" Id:"+roomID)+" Private Room:"+data.private;
-        socket.emit("newGame",{roomID:roomID});
-        //addplayerdata(socket.id, roomID,data.name);
+      createGame(socket, data,socket.id,false);
     });
     //Join Game Listener
     socket.on("joinGame",(data)=>{
-        if(rooms.hasOwnProperty(data.roomID) && rooms[data.roomID].players.length<2) {   
-            var curr_players = rooms[data.roomID].players;
-            let cost = rooms[data.roomID].player1info.money>0 ? rooms[data.roomID].player1info.money: 1000;
-            let playerinfo = data.playerinfo;
-            let playerobj = players[socket.id];
-            if(playerinfo.money>=cost){
-              curr_players.push(socket.id);
-              rooms[data.roomID].players = curr_players;
-              rooms[data.roomID].jsbApp = initjsbApp();
-              rooms[data.roomID].jsbApp.player1money = cost;
-              rooms[data.roomID].jsbApp.player2money = cost;
-              rooms[data.roomID].jsbApp.tablemoney = cost;
-              rooms[data.roomID].player2info = {id:socket.id,name:data.name,iframe:playerinfo.iframe, assisstant:playerobj.assisstant, currentevent:playerobj.currentevent, chatenabled:playerobj.chatenabled, gamename:data.playerinfo.gamename};
-              rooms[data.roomID].jsbApp.player1info = rooms[data.roomID].player1info;
-              rooms[data.roomID].jsbApp.player2info = rooms[data.roomID].player2info;
-              rooms[data.roomID].jsbApp.status = ACTION_SELECTING_WAGER;
-              rooms[data.roomID].jsbApp.chatenabled = playerobj.chatenabled && rooms[data.roomID].player1info.chatenabled;
-              players[socket.id].roomID=data.roomID;
-              socket.join(data.roomID);
-              socket.emit("player2Joined",{p2name: data.name,p1name:players[data.roomID],jsbApp:getjsbAppforClient(rooms[data.roomID].jsbApp)});
-              socket.broadcast.emit("player1Joined",{p2name:players[data.roomID],p1name:data.name,jsbApp:getjsbAppforClient(rooms[data.roomID].jsbApp)});
-              console.log(data.name+"- Room joined Id:"+data.roomID);
-              //addplayerdata(socket.id,data.roomID,data.name);
-              //addroomdata(rooms[data.roomID]);
-            }else{
-              socket.emit("showmessage",{code:100, message:"Not enough money to join room"});
-            }
-        }else{
-          if(rooms.hasOwnProperty(data.roomID) && rooms[data.roomID].players.length>1){
-            socket.emit("showmessage",{code:100, message:"Room is full"});
-          }
-        }
+      let roomID = data.roomID;
+      let playerinfo = data.playerinfo;
+      let name = data.name;
+      joinGame(roomID, socket, playerinfo, name, false);
     });
     socket.on("beginGame",(data)=>{
       let wager = parseInt(data.wager);
@@ -147,8 +112,12 @@ io.on('connection', function(socket) {
                 socket.emit("player2choice",{jsbApp:getjsbAppforClient(jsbApp)});
               }else{
                 jsbApp.gameStatus = 2 // player 1(dealer) turn
-                jsbApp.status = ACTION_SELECTING_CHOICE_1
-                socket.broadcast.emit("player1choice",{jsbApp:getjsbAppforClient(jsbApp)});
+                jsbApp.status = ACTION_SELECTING_CHOICE_1;
+                if(jsbApp.botmode){
+                  botChoice(socket,jsbApp);
+                }else{
+                  socket.broadcast.emit("player1choice",{jsbApp:getjsbAppforClient(jsbApp)});
+                }
                 socket.emit("hidenewgame",{jsbApp:getjsbAppforClient(jsbApp)});
               }
               socket.broadcast.emit("updateblackjacktable",{jsbApp:getjsbAppforClient(jsbApp)});
@@ -160,116 +129,18 @@ io.on('connection', function(socket) {
       }
     });
     socket.on("hitcard",(data)=>{
-      if(rooms.hasOwnProperty(data.roomID)){
-        let jsbApp = rooms[data.roomID].jsbApp;
-        let player1 = socket.id == rooms[data.roomID].player1info.id;
-        let player2 = socket.id == rooms[data.roomID].player2info.id;
-        let playerHand = player1?jsbApp.player1Hand:jsbApp.player2Hand;
-        if((jsbApp.gameStatus==2 && player1) ||(jsbApp.gameStatus==1 && !player1)){
-          jsbApp.status = "";
-          playerHand.push(drawcard(jsbApp));
-          cc(jsbApp,playerHand);
-          let total = handTotal(playerHand);
-          if(player2){
-            if(total>21){
-              player1wins(jsbApp);
-              jsbApp.gameStatus = 0 //game complete
-              jsbApp.status = !jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
-              io.in(data.roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
-              return;
-            }else if(total==21){
-              let p1total = handTotal(jsbApp.player1Hand);
-              if(p1total==total){
-                gametie(jsbApp);
-                jsbApp.gameStatus = 0; //game complete
-                jsbApp.status = !jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
-                io.in(data.roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
-              }else if(p1total<total){
-                jsbApp.gameStatus = 2 //player 1 (dealer) turn
-                jsbApp.status = ACTION_SELECTING_CHOICE_1;
-                socket.broadcast.emit("player1choice",{jsbApp:getjsbAppforClient(jsbApp)});
-              }
-            }else {
-              jsbApp.status = ACTION_SELECTING_CHOICE_2
-              socket.emit("player2choice",{jsbApp:getjsbAppforClient(jsbApp)});
-            }
-          }else if(player1){
-            if(total>21){
-              player2wins(jsbApp);
-              jsbApp.gameStatus = 0 //game complete
-              jsbApp.status = !jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
-              io.in(data.roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
-              return;
-            }else if(total==21){
-              jsbApp.gameStatus = 0 //game end
-              let p2total = handTotal(jsbApp.player2Hand);
-              if(p2total==total){
-                gametie(jsbApp);
-              }else{
-                player1wins(jsbApp);
-              }
-              jsbApp.status = !jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
-              io.in(data.roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
-            }else{
-              let p2total = handTotal(jsbApp.player2Hand);
-              if(total>p2total){
-                player1wins(jsbApp);
-                jsbApp.gameStatus = 0 //game complete
-                jsbApp.status = !jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
-                io.in(data.roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
-              }else{
-                jsbApp.status = ACTION_SELECTING_CHOICE_1
-                socket.emit("player1choice",{jsbApp:getjsbAppforClient(jsbApp)});
-              }
-            }
-          }
-          io.in(data.roomID).emit("updateblackjacktable",{jsbApp:getjsbAppforClient(jsbApp)});
-        }else{
-          console.log("incorrect game action :"+jsbApp.status+" "+jsbApp.gameStatus+' '+player1)
-        }
-      }
-  });
+      let roomID = data.roomID;
+      let id = socket.id;
+      hitCard(socket,roomID,id);
+    });
   socket.on("stayturn",(data)=>{
-    if(rooms.hasOwnProperty(data.roomID)){
-      let jsbApp = rooms[data.roomID].jsbApp;
-      let player1 = socket.id == rooms[data.roomID].player1info.id;
-      let player2 = socket.id == rooms[data.roomID].player2info.id;
-      let p1total = handTotal(jsbApp.player1Hand);
-      let p2total = handTotal(jsbApp.player2Hand);
-      if((jsbApp.gameStatus==2 && player1) ||(jsbApp.gameStatus==1 && player2)){
-        jsbApp.status ="";
-        if(player2){
-          if(p2total< p1total){
-            jsbApp.gameStatus = 0;  // game ends
-            player1wins(jsbApp);
-            jsbApp.status = ACTION_SELECTING_WAGER;
-            io.in(data.roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
-          }else{
-            jsbApp.gameStatus = 2;  // player 1 (dealer) turn
-            jsbApp.status = ACTION_SELECTING_CHOICE_1;
-            socket.broadcast.emit("player1choice",{jsbApp:getjsbAppforClient(jsbApp)});
-          }
-        }
-        else{
-          if(p1total==p2total){
-            gametie(jsbApp);
-          }else if(p1total< p2total){
-            player2wins(jsbApp);
-          }
-          jsbApp.gameStatus = 0;  // game end
-          jsbApp.status = !jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
-          io.in(data.roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
-        }
-        io.in(data.roomID).emit("updateblackjacktable",{jsbApp:getjsbAppforClient(jsbApp)});
-      }else{
-        console.log("incorrect game action"+jsbApp.gameStatus+' '+player1)
-      }
-    }
+    stayTurn(socket,  data.roomID, socket.id);
 
   });
   socket.on("initplayerdata",(data)=>{
     players[socket.id].currentevent = data.currentevent;
     players[socket.id].assisstant = data.assisstant;
+    players[socket.id].randomevent = data.randomevent;
     players[socket.id].chatenabled = data.chatenabled;
     players[socket.id].money = data.money;
   });
@@ -318,9 +189,69 @@ io.on('connection', function(socket) {
     }
     socket.emit("availablerooms",{rooms:availablerooms});
   });
-
+  socket.on("createbotmatch",(data)=>{
+    data.botmode = true;
+    let name = data.name;
+    data.name = "Bot";
+    data.playerinfo
+    let roomID = createGame(socket, data, "dummyid",true);
+    joinGame(roomID,socket,data.playerinfo,name, true);
+  });
 });
 const hiddencardtemp =  new card("", 0, "Hidden Card", "hidden", "black");
+
+function joinGame(roomID, socket, playerinfo, name, botmode) {
+  if (rooms.hasOwnProperty(roomID) && rooms[roomID].players.length < 2) {
+    var curr_players = rooms[roomID].players;
+    let cost = rooms[roomID].player1info.money > 0 ? rooms[roomID].player1info.money : 1000;
+    let playerobj = players[socket.id];
+    if (playerinfo.money >= cost) {
+      curr_players.push(socket.id);
+      rooms[roomID].players = curr_players;
+      rooms[roomID].jsbApp = initjsbApp();
+      rooms[roomID].jsbApp.player1money = cost;
+      rooms[roomID].jsbApp.player2money = cost;
+      rooms[roomID].jsbApp.tablemoney = cost;
+      rooms[roomID].player2info = { id: socket.id, name: name, iframe: playerinfo.iframe, assisstant: playerobj.assisstant, currentevent: playerobj.currentevent, chatenabled: playerobj.chatenabled, gamename: playerinfo.gamename, randomevent: playerobj.randomevent};
+      rooms[roomID].jsbApp.player1info = rooms[roomID].player1info;
+      rooms[roomID].jsbApp.player2info = rooms[roomID].player2info;
+      rooms[roomID].jsbApp.status = ACTION_SELECTING_WAGER;
+      rooms[roomID].jsbApp.chatenabled = playerobj.chatenabled && rooms[roomID].player1info.chatenabled;
+      rooms[roomID].jsbApp.botmode = botmode;
+      players[socket.id].roomID = roomID;
+      socket.join(roomID);
+      socket.emit("player2Joined", { p2name: name, p1name: players[roomID], jsbApp: getjsbAppforClient(rooms[roomID].jsbApp) });
+      socket.broadcast.emit("player1Joined", { p2name: players[roomID], p1name: name, jsbApp: getjsbAppforClient(rooms[roomID].jsbApp) });
+      console.log(name + "- Room joined Id:" + roomID);
+      //addplayerdata(socket.id,roomID,name);
+      //addroomdata(rooms[roomID]);
+    } else {
+      socket.emit("showmessage", { code: 100, message: "Not enough money to join room" });
+    }
+  } else {
+    if (rooms.hasOwnProperty(roomID) && rooms[roomID].players.length > 1) {
+      socket.emit("showmessage", { code: 100, message: "Room is full" });
+    }
+  }
+}
+
+function createGame(socket, data, id, bot) {
+  const roomID = randomstring.generate({ length: 4 });
+  let playerobj = players[socket.id];
+  socket.join(roomID);
+  let assisstant = playerobj.assisstant;
+  let currentevent = playerobj.currentevent;
+  if(bot){
+    assisstant = playerobj.randomevent.character;
+    currentevent = assisstant.blackjackevents[playerobj.randomevent.eventname];
+  }
+  rooms[roomID] = { players: [socket.id], player1info: { id: id, name: data.name, iframe: data.playerinfo.iframe, money: data.playerinfo.money, assisstant: assisstant, currentevent: currentevent, chatenabled: playerobj.chatenabled, gamename: data.playerinfo.gamename }, private: data.private , randomevent: playerobj.randomevent};
+  players[socket.id].roomID = roomID;
+  console.log("Room created by " + data.name + " Id:" + roomID) + " Private Room:" + data.private;
+  socket.emit("newGame", { roomID: roomID });
+  //addplayerdata(socket.id, roomID,data.name);
+  return roomID;
+}
 
 function getjsbAppforClient(jsbApp) {
     let filterjsbApp = {};
@@ -629,4 +560,136 @@ function cleanupdata(){
 }
 function getRoomID(id){
   return players[id].roomID;
+}
+
+function hitCard(socket,roomID,id){
+  if(rooms.hasOwnProperty(roomID)){
+    let jsbApp = rooms[roomID].jsbApp;
+    let player1 = id == rooms[roomID].player1info.id;
+    let player2 = id == rooms[roomID].player2info.id;
+    let playerHand = player1?jsbApp.player1Hand:jsbApp.player2Hand;
+    if((jsbApp.gameStatus==2 && player1) ||(jsbApp.gameStatus==1 && !player1)){
+      jsbApp.status = "";
+      playerHand.push(drawcard(jsbApp));
+      cc(jsbApp,playerHand);
+      let total = handTotal(playerHand);
+      if(player2){
+        if(total>21){
+          player1wins(jsbApp);
+          jsbApp.gameStatus = 0 //game complete
+          jsbApp.status = !jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
+          io.in(roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
+          return;
+        }else if(total==21){
+          let p1total = handTotal(jsbApp.player1Hand);
+          if(p1total==total){
+            gametie(jsbApp);
+            jsbApp.gameStatus = 0; //game complete
+            jsbApp.status = !jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
+            io.in(roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
+          }else if(p1total<total){
+            jsbApp.gameStatus = 2 //player 1 (dealer) turn
+            jsbApp.status = ACTION_SELECTING_CHOICE_1;
+            if(jsbApp.botmode){
+              botChoice(socket,jsbApp);
+            }else{
+              socket.broadcast.emit("player1choice",{jsbApp:getjsbAppforClient(jsbApp)});
+            }
+          }
+        }else {
+          jsbApp.status = ACTION_SELECTING_CHOICE_2
+          socket.emit("player2choice",{jsbApp:getjsbAppforClient(jsbApp)});
+        }
+      }else if(player1){
+        if(total>21){
+          player2wins(jsbApp);
+          jsbApp.gameStatus = 0 //game complete
+          jsbApp.status = !jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
+          io.in(roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
+          return;
+        }else if(total==21){
+          jsbApp.gameStatus = 0 //game end
+          let p2total = handTotal(jsbApp.player2Hand);
+          if(p2total==total){
+            gametie(jsbApp);
+          }else{
+            player1wins(jsbApp);
+          }
+          jsbApp.status = !jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
+          io.in(roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
+        }else{
+          let p2total = handTotal(jsbApp.player2Hand);
+          if(total>p2total){
+            player1wins(jsbApp);
+            jsbApp.gameStatus = 0 //game complete
+            jsbApp.status = !jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
+            io.in(roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
+          }else{
+            jsbApp.gameStatus = 2;
+            jsbApp.status = ACTION_SELECTING_CHOICE_1;
+            if(jsbApp.botmode){
+              botChoice(socket,jsbApp);
+            }else{
+              socket.broadcast.emit("player1choice",{jsbApp:getjsbAppforClient(jsbApp)});
+            }
+          }
+        }
+      }
+      io.in(roomID).emit("updateblackjacktable",{jsbApp:getjsbAppforClient(jsbApp)});
+    }else{
+      console.log("incorrect game action :"+jsbApp.status+" "+jsbApp.gameStatus+' '+player1)
+    }
+  }
+}
+
+function botChoice(socket,jsbApp){
+  let p1total = handTotal(jsbApp.player1Hand);
+  let p2total = handTotal(jsbApp.player2Hand);
+  if(p1total<16 || p1total<p2total){
+    hitCard(socket,jsbApp.roomID,"dummyid");
+  }else{
+    stayTurn(socket,jsbApp.roomID,"dummyid");
+  }
+}
+
+function stayTurn(socket, roomID, id){
+  if(rooms.hasOwnProperty(roomID)){
+    let jsbApp = rooms[roomID].jsbApp;
+    let player1 = id == rooms[roomID].player1info.id;
+    let player2 = id == rooms[roomID].player2info.id;
+    let p1total = handTotal(jsbApp.player1Hand);
+    let p2total = handTotal(jsbApp.player2Hand);
+    if((jsbApp.gameStatus==2 && player1) ||(jsbApp.gameStatus==1 && player2)){
+      jsbApp.status ="";
+      if(player2){
+        if(p2total< p1total){
+          jsbApp.gameStatus = 0;  // game ends
+          player1wins(jsbApp);
+          jsbApp.status = ACTION_SELECTING_WAGER;
+          io.in(roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
+        }else{
+          jsbApp.gameStatus = 2;  // player 1 (dealer) turn
+          jsbApp.status = ACTION_SELECTING_CHOICE_1;
+          if(jsbApp.botmode){
+            botChoice(socket,jsbApp);
+          }else{
+            socket.broadcast.emit("player1choice",{jsbApp:getjsbAppforClient(jsbApp)});
+          }
+        }
+      }
+      else{
+        if(p1total==p2total){
+          gametie(jsbApp);
+        }else if(p1total< p2total){
+          player2wins(jsbApp);
+        }
+        jsbApp.gameStatus = 0;  // game end
+        jsbApp.status = !jsbApp.gameComplete?jsbApp.status + ACTION_SELECTING_WAGER:jsbApp.status;
+        io.in(roomID).emit("player2wager",{jsbApp:getjsbAppforClient(jsbApp)});
+      }
+      io.in(roomID).emit("updateblackjacktable",{jsbApp:getjsbAppforClient(jsbApp)});
+    }else{
+      console.log("incorrect game action"+jsbApp.gameStatus+' '+player1)
+    }
+  }
 }
